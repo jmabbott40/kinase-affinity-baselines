@@ -1,0 +1,56 @@
+# Data (large files, not tracked — keep .gitkeep for structure)
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+!data/processed/v1/
+data/processed/v1/*
+!data/processed/v1/.gitkeep
+!data/processed/v1/features/
+data/processed/v1/features/*
+!data/processed/v1/features/.gitkeep
+!data/processed/v1/splits/
+data/processed/v1/splits/*
+!data/processed/v1/splits/.gitkeep
+
+# Model checkpoints
+models/
+*.pkl
+*.joblib
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.envrc
+
+# Claude Code
+.claude/
+
+# Results figures (regenerable; tables are tracked)
+results/figures/*
+!results/figures/.gitkeep
+
+# Conda
+*.conda
