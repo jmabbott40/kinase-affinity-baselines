@@ -7,7 +7,6 @@ import numpy as np
 class TestMorganFingerprints:
     """Test Morgan fingerprint generation."""
 
-    @pytest.mark.skip(reason="Not yet implemented")
     def test_output_shape(self):
         """Fingerprint should have correct number of bits."""
         from kinase_affinity.features.fingerprints import smiles_to_morgan_fp
@@ -15,7 +14,6 @@ class TestMorganFingerprints:
         fp = smiles_to_morgan_fp("c1ccccc1", radius=2, n_bits=2048)
         assert fp.shape == (2048,)
 
-    @pytest.mark.skip(reason="Not yet implemented")
     def test_binary_values(self):
         """Fingerprint values should be 0 or 1."""
         from kinase_affinity.features.fingerprints import smiles_to_morgan_fp
@@ -23,7 +21,6 @@ class TestMorganFingerprints:
         fp = smiles_to_morgan_fp("c1ccccc1")
         assert set(np.unique(fp)).issubset({0, 1})
 
-    @pytest.mark.skip(reason="Not yet implemented")
     def test_invalid_smiles_returns_none(self):
         """Invalid SMILES should return None."""
         from kinase_affinity.features.fingerprints import smiles_to_morgan_fp
@@ -31,7 +28,6 @@ class TestMorganFingerprints:
         fp = smiles_to_morgan_fp("not_valid")
         assert fp is None
 
-    @pytest.mark.skip(reason="Not yet implemented")
     def test_batch_computation(self):
         """Batch computation should return matrix of correct shape."""
         from kinase_affinity.features.fingerprints import compute_fingerprints
@@ -44,7 +40,6 @@ class TestMorganFingerprints:
 class TestRDKitDescriptors:
     """Test RDKit descriptor computation."""
 
-    @pytest.mark.skip(reason="Not yet implemented")
     def test_returns_dict(self):
         """Single molecule should return descriptor dictionary."""
         from kinase_affinity.features.descriptors import smiles_to_descriptors
@@ -53,7 +48,6 @@ class TestRDKitDescriptors:
         assert isinstance(desc, dict)
         assert len(desc) > 100  # RDKit computes ~200 descriptors
 
-    @pytest.mark.skip(reason="Not yet implemented")
     def test_batch_returns_matrix(self):
         """Batch computation should return (n_mols, n_desc) matrix."""
         from kinase_affinity.features.descriptors import compute_descriptors
@@ -62,3 +56,10 @@ class TestRDKitDescriptors:
         matrix, names = compute_descriptors(smiles)
         assert matrix.shape[0] == 3
         assert len(names) == matrix.shape[1]
+
+    def test_invalid_smiles_handled(self):
+        """Invalid SMILES in batch should not crash; row gets NaN fill."""
+        from kinase_affinity.features.descriptors import smiles_to_descriptors
+
+        desc = smiles_to_descriptors("not_valid_smiles")
+        assert desc is None

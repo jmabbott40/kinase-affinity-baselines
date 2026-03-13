@@ -43,6 +43,14 @@ quality:
 classification:
   active_pactivity_threshold: 6.0  # pActivity >= 6.0 (IC50 <= 1 μM) = active
 
+# Feature engineering
+features:
+  morgan:
+    radius: 2
+    n_bits: 2048
+  descriptors:
+    drop_missing_threshold: 0.05  # Drop descriptors with >5% missing values
+
 # Splitting
 splits:
   random:
