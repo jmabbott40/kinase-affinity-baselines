@@ -13,8 +13,7 @@ data/processed/v1/features/*
 data/processed/v1/splits/*
 !data/processed/v1/splits/.gitkeep
 
-# Model checkpoints
-models/
+# Model checkpoints (saved model artifacts, not source code)
 *.pkl
 *.joblib
 
@@ -48,7 +47,9 @@ Thumbs.db
 # Claude Code
 .claude/
 
-# Results figures (regenerable; tables are tracked)
+# Results — predictions and models are large, regenerable files
+results/predictions/
+results/models/
 results/figures/*
 !results/figures/.gitkeep
 
