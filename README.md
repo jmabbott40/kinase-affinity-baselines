@@ -28,11 +28,21 @@ Protein kinase bioactivity data curated from [ChEMBL](https://www.ebi.ac.uk/chem
 - **Standardization**: RDKit salt removal, charge neutralization, canonical SMILES
 - **Duplicate handling**: median aggregation with noise flagging
 
+| Statistic | Value |
+|-----------|-------|
+| Raw records | 501K |
+| Curated records | 353K |
+| Unique compounds | 206K |
+| Unique targets | 507 |
+| Murcko scaffolds | 33,808 |
+| Activity types | IC50 (80%), Ki (15%), Kd (5%) |
+| Active (pActivity ≥ 6.0) | 77.3% |
+
 See [`docs/data_card.md`](docs/data_card.md) for full dataset documentation.
 
 ## Models
 
-### Baselines (Phase 1)
+### Baselines
 
 | Model | Features | Uncertainty |
 |-------|----------|-------------|
@@ -41,11 +51,13 @@ See [`docs/data_card.md`](docs/data_card.md) for full dataset documentation.
 | ElasticNet | RDKit 2D descriptors | Bootstrap CI |
 | MLP | Morgan FP (2048-bit) | Ensemble variance |
 
-### Advanced (Phase 2 — future)
+### Advanced Neural Networks
 
-- Ligand GNN (PyTorch Geometric)
-- Protein embeddings (ESM-2) + ligand fingerprint fusion
-- Docking-derived features + ML
+| Model | Ligand Representation | Protein Representation | Uncertainty |
+|-------|----------------------|----------------------|-------------|
+| ESM-FP MLP | Morgan FP (2048-bit) | ESM-2 embeddings (1280-dim) | MC-Dropout |
+| GIN (Graph Isomorphism Network) | Molecular graph (atom/bond features) | — | MC-Dropout |
+| Fusion | GIN molecular graph | ESM-2 embeddings (1280-dim) | MC-Dropout |
 
 ## Evaluation
 
@@ -57,12 +69,12 @@ See [`docs/data_card.md`](docs/data_card.md) for full dataset documentation.
 ## Project Roadmap
 
 - [x] Phase 1: Repository scaffolding and environment setup
-- [ ] Phase 2: Data pipeline (ChEMBL ingestion → curated dataset)
-- [ ] Phase 3: Feature engineering (Morgan FP, RDKit descriptors)
-- [ ] Phase 4: Baseline models (RF, XGBoost, ElasticNet, MLP)
-- [ ] Phase 5: Evaluation and uncertainty analysis
-- [ ] Phase 6: Case studies and scientific report
-- [ ] Phase 7: Advanced models (GNN, protein embeddings)
+- [x] Phase 2: Data pipeline (ChEMBL ingestion → curated dataset)
+- [x] Phase 3: Feature engineering (Morgan FP, RDKit descriptors)
+- [x] Phase 4: Baseline models (RF, XGBoost, ElasticNet, MLP) — 12 experiments (4 models × 3 splits)
+- [x] Phase 5: Evaluation and uncertainty analysis — calibration, selective prediction, error analysis, hyperparameter tuning
+- [ ] Phase 6: Case studies (kinase subfamily deep dive)
+- [x] Phase 7: Advanced models — GIN, ESM-2 protein embeddings, GNN+ESM fusion (training in progress on AWS)
 
 ## Quick Start
 
@@ -107,8 +119,19 @@ python -m kinase_affinity.data.curate
 python -m kinase_affinity.features.fingerprints
 python -m kinase_affinity.features.descriptors
 
-# Train baseline models
-python -m kinase_affinity.training.trainer --config configs/rf_baseline.yaml
+# Train baseline models (CPU)
+python -m kinase_affinity.training.trainer --all
+
+# Run Phase 5 evaluation and uncertainty analysis
+python -m kinase_affinity.evaluation.run_phase5
+
+# Hyperparameter tuning
+python -m kinase_affinity.training.tune --all
+
+# Advanced models (GPU required)
+python -m kinase_affinity.data.protein_sequences   # Fetch kinase sequences
+python -m kinase_affinity.features.protein_embeddings  # Compute ESM-2 embeddings
+python -m kinase_affinity.training.deep_trainer --all  # Train GIN, ESM-FP MLP, Fusion
 ```
 
 ## Repository Structure
@@ -119,14 +142,15 @@ python -m kinase_affinity.training.trainer --config configs/rf_baseline.yaml
 │   ├── raw/           # Raw ChEMBL exports (gitignored)
 │   └── processed/     # Versioned curated datasets (gitignored)
 ├── notebooks/         # Analysis and visualization notebooks
+├── scripts/           # AWS runner scripts for GPU training
 ├── src/kinase_affinity/
-│   ├── data/          # Ingestion, standardization, curation, splits
-│   ├── features/      # Morgan FP, RDKit descriptors
-│   ├── models/        # Model implementations
-│   ├── training/      # Training loop and config loading
-│   ├── evaluation/    # Metrics, uncertainty, error analysis
+│   ├── data/          # Ingestion, standardization, curation, splits, protein sequences
+│   ├── features/      # Morgan FP, RDKit descriptors, molecular graphs, ESM-2 embeddings
+│   ├── models/        # RF, XGBoost, ElasticNet, MLP, GIN, ESM-FP MLP, Fusion
+│   ├── training/      # Baseline trainer, deep trainer, hyperparameter tuning
+│   ├── evaluation/    # Metrics, uncertainty calibration, error analysis
 │   └── visualization/ # Plotting utilities
-├── tests/             # Unit tests
+├── tests/             # Unit tests (32+ tests across all phases)
 ├── results/           # Output tables and figures (gitignored figures)
 └── docs/              # Data card and project report
 ```
