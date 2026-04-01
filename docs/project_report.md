@@ -187,11 +187,63 @@ Going from random to scaffold split costs ~12% in RMSE, and moving to target spl
 
 ## 7. Uncertainty Quantification
 
-*Results pending completion of all experiments. Will include calibration plots, error-uncertainty correlation, and selective prediction analysis.*
+Each model provides uncertainty estimates through a different mechanism, reflecting different sources of epistemic uncertainty:
+
+### 7.1 Uncertainty methods
+
+| Model | Method | What it captures |
+|-------|--------|-----------------|
+| Random Forest | Tree prediction variance | Disagreement between bootstrap-sampled trees; high in sparse regions of chemical space |
+| XGBoost | Quantile regression (5th/95th) | Width of the 90% prediction interval; std = (q95 - q05) / (2 × 1.645) |
+| ElasticNet | Bootstrap resampling (100×) | Sensitivity of linear coefficients to training data perturbation |
+| MLP | Ensemble variance (3 models) | Sensitivity to random initialization; captures regions where the loss landscape has multiple basins |
+
+### 7.2 Calibration analysis
+
+A well-calibrated model's prediction intervals should match their stated confidence: a 90% interval should contain 90% of true values. We assess this using a calibration curve, where we vary the confidence level from ~10% to ~95% and measure the fraction of true values falling within the corresponding interval.
+
+The **miscalibration area** (area between the calibration curve and the perfect-calibration diagonal) provides a single number summarizing calibration quality. Lower is better; zero means perfect calibration.
+
+### 7.3 Error-uncertainty correlation
+
+A useful uncertainty estimate should correlate with actual prediction error -- the model should "know what it doesn't know." We measure Pearson and Spearman correlation between |prediction error| and predicted uncertainty. High correlation means uncertain predictions are indeed less accurate, which is actionable: a medicinal chemist can prioritize high-confidence predictions for experimental validation.
+
+### 7.4 Selective prediction
+
+The most practically relevant analysis: if we refuse to predict on the most uncertain compounds, how much does RMSE improve? The selective prediction curve shows RMSE as a function of retention fraction (1.0 = all predictions, 0.5 = only the most confident half).
+
+A steep curve means uncertainty estimation adds value to the decision-making pipeline. A flat curve means the uncertainty estimates are uninformative -- no better than random rejection.
+
+*Quantitative calibration results will be populated after running the Phase 5 analysis pipeline (`python -m kinase_affinity.evaluation.run_phase5`).*
 
 ## 8. Error Analysis
 
-*Planned for Phase 5. Will analyze failure modes including activity cliffs, rare scaffolds, noisy measurements, and activity type mixing.*
+### 8.1 Per-target metrics
+
+Aggregate metrics (RMSE, R²) can mask substantial variation across kinase targets. Some kinases may be well-predicted because they are heavily represented in the training data or have straightforward SAR, while others may be intrinsically difficult due to unusual binding modes or sparse data.
+
+We compute per-target RMSE, MAE, R², and correlation for all targets with at least 10 test compounds, and examine the distribution of per-target performance to identify:
+- **Easy targets**: well-predicted kinases where baselines are likely sufficient
+- **Hard targets**: kinases where even the best baseline fails, suggesting that protein-aware models may be needed
+
+### 8.2 Noise impact
+
+During data curation (Section 2.3), we flagged 1,965 measurements as "noisy" -- compounds with ≥3 replicate measurements and standard deviation > 1.0 pActivity units. If models perform worse on these compounds, it suggests that measurement noise (not model failure) sets a floor on achievable accuracy for those data points.
+
+### 8.3 Worst predictions
+
+Identifying the compounds with the largest absolute errors reveals failure modes:
+- **Activity cliffs**: structurally similar compounds with very different activities. Fingerprint-based models cannot distinguish these because the structural difference falls below the fingerprint resolution (radius=2 substructures)
+- **Underrepresented scaffolds**: novel chemical matter far from training distribution
+- **Mixed activity types**: compounds measured as IC50 vs Ki vs Kd may have systematic offsets
+
+### 8.4 Hyperparameter tuning
+
+Phase 4 revealed that ElasticNet with default alpha=1.0 collapses completely (all coefficients driven to zero). Phase 5 includes a validation-set hyperparameter search over:
+- **ElasticNet**: alpha ∈ {0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0} × l1_ratio ∈ {0.1, 0.3, 0.5, 0.7, 0.9}
+- **XGBoost**: max_depth ∈ {4, 6, 8, 10, 12} × learning_rate ∈ {0.05, 0.1} × n_estimators ∈ {300, 500}
+
+*Tuning results and re-evaluated metrics will be populated after running the tuning pipeline (`python -m kinase_affinity.training.tune --all`).*
 
 ## 9. Case Study: [Target Family TBD]
 
@@ -201,19 +253,19 @@ Going from random to scaffold split costs ~12% in RMSE, and moving to target spl
 
 ### What we have established
 
-Phase 4 provides a rigorous baseline performance floor for kinase affinity prediction across all 12 experiments (4 models x 3 splits):
+Phases 4-5 provide a rigorous baseline performance floor and evaluation framework for kinase affinity prediction across all 12 experiments (4 models × 3 splits):
 
-- **Best baselines**: RF and MLP are near-equivalent with Morgan fingerprints (RMSE ~0.82, R^2 ~0.58 on random split), suggesting that the fingerprint representation — not the model — is the performance bottleneck
-- **Splitting matters enormously**: random-split metrics overestimate real-world performance by 30-55% depending on the metric. Target-split R^2 drops to 0.23-0.27
+- **Best baselines**: RF and MLP are near-equivalent with Morgan fingerprints (RMSE ~0.82, R² ~0.58 on random split), suggesting that the fingerprint representation — not the model — is the performance bottleneck
+- **Splitting matters enormously**: random-split metrics overestimate real-world performance by 30-55% depending on the metric. Target-split R² drops to 0.23-0.27
 - **Neural networks don't help (yet)**: MLP provides no improvement over RF for fingerprint features, indicating that non-linear feature combinations are not the limiting factor. The benefit of neural architectures may emerge only with richer input representations (protein embeddings, 3D structure)
-- **Simple linear models are insufficient**: ElasticNet with default regularization cannot capture kinase SAR from 2D descriptors alone
+- **Simple linear models are insufficient**: ElasticNet with default regularization cannot capture kinase SAR from 2D descriptors alone; hyperparameter tuning (Phase 5) is expected to recover meaningful predictions
 - **Cross-target transfer is partial**: fingerprint-based models capture some generalizable SAR (likely ATP-site interactions), but large gaps remain for novel kinase targets — the core motivation for protein-aware models
+- **Uncertainty quantification**: all models provide uncertainty estimates, enabling selective prediction (rejecting high-uncertainty compounds) and calibration analysis to assess when predictions can be trusted
 
 ### Future phases
 
-- **Phase 5** (Evaluation): hyperparameter optimization, uncertainty calibration analysis, error analysis by activity type and target family
-- **Phase 6** (Case studies): deep-dive on a specific kinase subfamily
-- **Phase 7** (Advanced models): GNN, ESM-2 protein embeddings, and fusion models -- evaluated using the same framework to enable fair comparison against these baselines
+- **Phase 6** (Case studies): deep-dive on a specific kinase subfamily (CDK, JAK, or EGFR) with compound-level analysis
+- **Phase 7** (Advanced models): GNN, ESM-2 protein embeddings, and fusion models — evaluated using the same framework to enable fair comparison against these baselines. The hypothesis: protein-aware models should primarily help on the target split, where baselines show the largest performance gap
 
 ## References
 
