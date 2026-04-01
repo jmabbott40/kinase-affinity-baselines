@@ -196,6 +196,29 @@ def load_rdkit_descriptors(
     )
 
 
+def load_esm2_embeddings(
+    version: str = "v1",
+) -> tuple[np.ndarray, dict[str, int]]:
+    """Load cached ESM-2 protein embeddings.
+
+    Parameters
+    ----------
+    version : str
+        Dataset version.
+
+    Returns
+    -------
+    tuple[np.ndarray, dict[str, int]]
+        (embedding_matrix, target_to_row) where target_to_row maps
+        target_chembl_id to row index in the embedding matrix.
+    """
+    features_dir = PROCESSED_DIR / version / "features"
+    emb_data = np.load(features_dir / "esm2_embeddings.npz")
+    with open(features_dir / "target_index.json") as f:
+        target_to_row = json.load(f)
+    return emb_data["embeddings"], target_to_row
+
+
 def main() -> None:
     """CLI entry point for feature computation."""
     parser = argparse.ArgumentParser(

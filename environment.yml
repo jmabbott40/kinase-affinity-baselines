@@ -25,7 +25,12 @@ dependencies:
   # Dev tools
   - pytest>=7.4
   - ruff>=0.1
-  # ChEMBL API (pip-only package)
+  # Deep learning (Phase 7)
+  - pytorch>=2.1
+  - pytorch-cuda=12.1  # adjust for available CUDA version; remove for CPU-only
+  # ChEMBL API + deep learning pip packages
   - pip
   - pip:
       - chembl-webresource-client>=0.10
+      - torch-geometric>=2.4
+      - fair-esm>=2.0.0
