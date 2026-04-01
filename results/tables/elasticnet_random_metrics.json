@@ -2,7 +2,7 @@
   "model": "elasticnet",
   "split": "random",
   "features": "rdkit_descriptors",
-  "train_time_seconds": 64.9,
+  "train_time_seconds": 60.0,
   "n_train": 282299,
   "n_val": 35287,
   "n_test": 35288,
@@ -18,8 +18,8 @@
   "test_spearman_rho": NaN,
   "test_auroc": 0.5,
   "test_auprc": 0.7711119927454092,
-  "test_precision_at_100": 0.96,
-  "test_precision_at_500": 0.882,
-  "test_ef_1pct": 1.127356583734519,
-  "test_ef_5pct": 1.0836310612346565
+  "test_precision_at_100": 0.65,
+  "test_precision_at_500": 0.718,
+  "test_ef_1pct": 0.8731487266179119,
+  "test_ef_5pct": 0.8572006902303999
 }
