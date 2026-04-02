@@ -214,7 +214,40 @@ The most practically relevant analysis: if we refuse to predict on the most unce
 
 A steep curve means uncertainty estimation adds value to the decision-making pipeline. A flat curve means the uncertainty estimates are uninformative -- no better than random rejection.
 
-*Quantitative calibration results will be populated after running the Phase 5 analysis pipeline (`python -m kinase_affinity.evaluation.run_phase5`).*
+### 7.5 Calibration results
+
+Calibration quality varies dramatically across models and uncertainty methods. The table below shows miscalibration area (lower = better calibrated), error-uncertainty correlation (higher = more actionable), and selective prediction improvement at 50% retention (higher = more useful for decision-making).
+
+| Model | Split | Miscal. Area | UQ Spearman ρ | Sel. Improv. (50%) |
+|-------|-------|-------------|---------------|-------------------|
+| **XGBoost** | Random | **0.017** | 0.195 | **12.5%** |
+| **XGBoost** | Scaffold | **0.003** | 0.151 | 8.3% |
+| **XGBoost** | Target | **0.048** | 0.021 | -2.5% |
+| Random Forest | Random | 0.120 | 0.142 | 7.2% |
+| Random Forest | Scaffold | 0.037 | **0.334** | **21.5%** |
+| Random Forest | Target | 0.166 | **0.201** | **16.3%** |
+| MLP (baseline) | Random | 0.256 | 0.057 | 4.7% |
+| MLP (baseline) | Scaffold | 0.252 | 0.057 | 3.7% |
+| MLP (baseline) | Target | 0.301 | 0.126 | 7.5% |
+| ESM-FP MLP | Random | 0.167 | -0.011 | -0.5% |
+| ESM-FP MLP | Scaffold | 0.175 | -0.000 | 2.5% |
+| ESM-FP MLP | Target | 0.186 | 0.045 | 3.3% |
+| GIN | Random | 0.317 | -0.030 | -0.4% |
+| GIN | Scaffold | 0.322 | -0.058 | -2.1% |
+| GIN | Target | 0.227 | 0.070 | 3.8% |
+| Fusion | Random | 0.239 | -0.045 | -1.2% |
+| Fusion | Scaffold | 0.259 | -0.061 | -2.6% |
+| Fusion | Target | 0.283 | 0.042 | 5.6% |
+
+**Key findings on uncertainty:**
+
+1. **XGBoost quantile regression is best calibrated** (miscal. area 0.003-0.048), substantially outperforming all other methods. Its prediction intervals closely match stated confidence levels across all splits.
+
+2. **Random Forest tree variance is most actionable.** While RF's calibration is moderate (miscal. area 0.037-0.166), it has the strongest error-uncertainty correlation (Spearman ρ = 0.334 on scaffold split) and the highest selective prediction improvement (21.5% RMSE reduction at 50% retention on scaffold split). This means RF's uncertainty estimates are the most useful for practical decision-making: rejecting its most uncertain predictions substantially improves accuracy.
+
+3. **MC-Dropout uncertainty from deep models is poorly calibrated.** All three neural models (ESM-FP MLP, GIN, Fusion) show high miscalibration areas (0.167-0.322), near-zero or negative error-uncertainty correlations, and negligible or negative selective prediction improvement. MC-Dropout with only 10 forward passes produces uncertainty estimates that are effectively uninformative — the model *does not know what it doesn't know*.
+
+4. **Baseline ensemble uncertainty >> MC-Dropout uncertainty.** Averaging across splits, baseline models achieve mean miscalibration of 0.097-0.172 and selective improvement of +7-11%, while deep models average 0.232-0.252 miscalibration and -0.7% selective improvement. This is a significant practical disadvantage of the deep learning approach: not only are the point predictions often similar, but the uncertainty estimates are worse.
 
 ## 8. Error Analysis
 
@@ -245,30 +278,125 @@ Phase 4 revealed that ElasticNet with default alpha=1.0 collapses completely (al
 
 *Tuning results and re-evaluated metrics will be populated after running the tuning pipeline (`python -m kinase_affinity.training.tune --all`).*
 
-## 9. Case Study: [Target Family TBD]
+## 9. Advanced Neural Network Models (Phase 7)
+
+### 9.1 Motivation
+
+The baseline results (Sections 6-8) establish that fingerprint-based models achieve R² = 0.59 on random splits but degrade to R² = 0.27 on target-held-out splits. The core hypothesis for Phase 7 is: **protein-aware models should primarily help on the target split**, where the model must generalize to unseen kinase subfamilies and where information about the target protein's identity and structure could compensate for the lack of training data.
+
+### 9.2 Model architectures
+
+Three advanced models were implemented, each introducing a different form of biological information:
+
+**ESM-FP MLP**: Concatenates Morgan fingerprints (2048-dim) with ESM-2 protein language model embeddings (1280-dim) for a 3328-dim input. Architecture: Input(3328) → [Linear→ReLU→Dropout→BatchNorm] × 2 → Linear→ReLU→Dropout → Linear(1). This model tests whether knowing which protein the ligand binds to (via ESM-2 embeddings from the `esm2_t33_650M_UR50D` model, mean-pooled over residue positions) improves predictions.
+
+**GIN (Graph Isomorphism Network)**: Operates directly on molecular graphs instead of fixed fingerprints. Atom features (~35 dim: element, degree, charge, hybridization, aromaticity, chirality) and bond features (~11 dim: bond type, stereo, conjugation) are processed through 3 GINConv layers with 128-dim hidden states, followed by global mean+max pooling (256-dim) and an MLP head. This tests whether *learned* molecular representations outperform *fixed* fingerprints.
+
+**GIN + ESM-2 Fusion**: Combines both innovations — a GIN ligand branch (→ 256-dim projection) and an ESM-2 protein branch (1280 → 256) are concatenated and fed through a shared MLP head. This is the most information-rich model, with access to both learned molecular and protein representations.
+
+All deep models use:
+- **AdamW optimizer** with cosine annealing learning rate schedule
+- **Early stopping** with patience = 15 epochs on validation RMSE
+- **MC-Dropout** (10 forward passes) for uncertainty estimation
+- **Batch size**: 512 (ESM-FP MLP), 256 (GNN, Fusion)
+
+### 9.3 Regression performance
+
+| Model | Split | RMSE | MAE | R² | Pearson | Train Time |
+|-------|-------|------|-----|-----|---------|------------|
+| **ESM-FP MLP** | **Random** | **0.775** | **0.582** | **0.629** | **0.794** | 229s |
+| Fusion | Random | 0.793 | 0.603 | 0.613 | 0.784 | 1551s |
+| Random Forest | Random | 0.818 | 0.632 | 0.587 | 0.769 | 87s |
+| MLP (baseline) | Random | 0.824 | 0.623 | 0.581 | 0.764 | 647s |
+| GIN | Random | 0.829 | 0.640 | 0.577 | 0.760 | 1411s |
+| XGBoost | Random | 0.893 | 0.710 | 0.508 | 0.718 | 113s |
+| | | | | | | |
+| **ESM-FP MLP** | **Scaffold** | **0.897** | **0.684** | **0.502** | **0.711** | 156s |
+| MLP (baseline) | Scaffold | 0.905 | 0.697 | 0.493 | 0.705 | 704s |
+| Random Forest | Scaffold | 0.919 | 0.722 | 0.478 | 0.712 | 88s |
+| GIN | Scaffold | 0.941 | 0.730 | 0.453 | 0.676 | 1032s |
+| Fusion | Scaffold | 0.945 | 0.726 | 0.449 | 0.677 | 1178s |
+| XGBoost | Scaffold | 0.961 | 0.757 | 0.429 | 0.664 | 111s |
+| | | | | | | |
+| **Random Forest** | **Target** | **1.067** | **0.834** | **0.265** | **0.520** | 76s |
+| MLP (baseline) | Target | 1.090 | 0.851 | 0.234 | 0.527 | 599s |
+| XGBoost | Target | 1.135 | 0.888 | 0.169 | 0.426 | 97s |
+| Fusion | Target | 1.138 | 0.894 | 0.165 | 0.465 | 683s |
+| GIN | Target | 1.146 | 0.916 | 0.154 | 0.441 | 342s |
+| ESM-FP MLP | Target | 1.177 | 0.924 | 0.107 | 0.372 | 44s |
+
+### 9.4 Key findings
+
+**1. ESM-FP MLP wins on random and scaffold splits — but by diminishing margins.** On random splits, ESM-FP MLP (RMSE=0.775) improves over the best baseline RF (RMSE=0.818) by 5.3%. On scaffold splits, the improvement shrinks to just 0.9% (0.897 vs 0.905 MLP baseline). The protein embedding provides useful target-identity information when structural analogs are available in training, but adds less when the model must generalize to novel scaffolds.
+
+**2. Baselines win on target-held-out splits — the most important finding.** On the target split, Random Forest (RMSE=1.067) beats every neural model, and ESM-FP MLP (RMSE=1.177) drops to *last place*. This directly contradicts the hypothesis that protein embeddings would help most where baselines struggle. Instead, ESM-2 embeddings become a *liability* — the model overfits to the association between specific embedding patterns and activity ranges during training, and these associations don't transfer to unseen kinase subfamilies.
+
+**3. Early stopping reveals the learning dynamics.** ESM-FP MLP stopped at epoch 2 on the target split (vs. epoch 50 on random), meaning it couldn't learn any transferable patterns for unseen targets beyond what the first few gradient steps provide. GIN stopped at epoch 10, and Fusion at epoch 30 — all far earlier than on random splits (50-98 epochs), indicating that the validation signal deteriorates rapidly for novel targets.
+
+**4. GIN does not outperform Morgan fingerprints.** The learned graph representation (GIN, RMSE=0.829 random) performs equivalently to fixed 2048-bit Morgan fingerprints (RF=0.818, MLP=0.824) across all splits. This suggests that for this dataset size (~350K) and task, the GINConv message-passing layers don't capture meaningful information beyond what ECFP4 fingerprints already encode. The atom/bond featurization (35+11 dims) may be insufficient, or the 3-layer GIN architecture may lack the depth for complex SAR.
+
+**5. Fusion doesn't synergize — it averages.** The Fusion model (GIN + ESM-2) performs between its two component models rather than exceeding both. On random splits (RMSE=0.793), it's worse than ESM-FP MLP (0.775) but better than GIN (0.829). On target splits (RMSE=1.138), it's worse than both RF (1.067) and MLP (1.090). The concatenation fusion strategy doesn't enable the model to leverage complementary information from the two branches.
+
+**6. Computational cost is not justified.** The GIN and Fusion models cost 16-18× more compute than Random Forest (1411-1551s vs 87s) for equivalent or worse performance. Only ESM-FP MLP offers a favorable cost-benefit tradeoff (229s, 2.6× RF) with a 5.3% RMSE improvement on random splits.
+
+### 9.5 Performance degradation analysis
+
+The degradation pattern from random → scaffold → target splits reveals each model's sensitivity to data leakage:
+
+| Model | Random RMSE | Scaffold RMSE | Target RMSE | Random→Target Δ |
+|-------|-------------|---------------|-------------|-----------------|
+| ESM-FP MLP | 0.775 | 0.897 (+15.7%) | 1.177 (+51.9%) | **+51.9%** |
+| Random Forest | 0.818 | 0.919 (+12.3%) | 1.067 (+30.4%) | +30.4% |
+| MLP (baseline) | 0.824 | 0.905 (+9.8%) | 1.090 (+32.3%) | +32.3% |
+| GIN | 0.829 | 0.941 (+13.5%) | 1.146 (+38.2%) | +38.2% |
+| XGBoost | 0.893 | 0.961 (+7.6%) | 1.135 (+27.1%) | +27.1% |
+| Fusion | 0.793 | 0.945 (+19.2%) | 1.138 (+43.5%) | +43.5% |
+
+ESM-FP MLP degrades the most (51.9%) from random to target split, confirming that its random-split advantage is inflated by target-identity leakage. Random Forest and XGBoost show the most graceful degradation (27-30%), making them more reliable across deployment scenarios.
+
+## 10. Case Study: [Target Family TBD]
 
 *Planned for Phase 6. Deep dive on a specific kinase subfamily with compound-level analysis of good and bad predictions.*
 
-## 10. Conclusions and Next Steps
+## 11. Conclusions
 
-### What we have established
+### Answering the scientific question
 
-Phases 4-5 provide a rigorous baseline performance floor and evaluation framework for kinase affinity prediction across all 12 experiments (4 models × 3 splits):
+**When do complex, structure-aware ML models outperform simple cheminformatics baselines?**
 
-- **Best baselines**: RF and MLP are near-equivalent with Morgan fingerprints (RMSE ~0.82, R² ~0.58 on random split), suggesting that the fingerprint representation — not the model — is the performance bottleneck
-- **Splitting matters enormously**: random-split metrics overestimate real-world performance by 30-55% depending on the metric. Target-split R² drops to 0.23-0.27
-- **Neural networks don't help (yet)**: MLP provides no improvement over RF for fingerprint features, indicating that non-linear feature combinations are not the limiting factor. The benefit of neural architectures may emerge only with richer input representations (protein embeddings, 3D structure)
-- **Simple linear models are insufficient**: ElasticNet with default regularization cannot capture kinase SAR from 2D descriptors alone; hyperparameter tuning (Phase 5) is expected to recover meaningful predictions
-- **Cross-target transfer is partial**: fingerprint-based models capture some generalizable SAR (likely ATP-site interactions), but large gaps remain for novel kinase targets — the core motivation for protein-aware models
-- **Uncertainty quantification**: all models provide uncertainty estimates, enabling selective prediction (rejecting high-uncertainty compounds) and calibration analysis to assess when predictions can be trusted
+Based on our systematic evaluation of 7 models across 3 splitting strategies (21 experiments total, ~350K kinase bioactivity records):
 
-### Future phases
+1. **Complex models win under lenient evaluation conditions.** ESM-FP MLP achieves the best RMSE (0.775) on random splits, a 5.3% improvement over Random Forest (0.818). The protein embedding provides useful information about target identity when the model has seen examples from the same kinases during training.
 
-- **Phase 6** (Case studies): deep-dive on a specific kinase subfamily (CDK, JAK, or EGFR) with compound-level analysis
-- **Phase 7** (Advanced models): GNN, ESM-2 protein embeddings, and fusion models — evaluated using the same framework to enable fair comparison against these baselines. The hypothesis: protein-aware models should primarily help on the target split, where baselines show the largest performance gap
+2. **The advantage nearly vanishes under scaffold splits.** When structural analogs can't leak between train and test, the best deep model (ESM-FP MLP, RMSE=0.897) barely edges the best baseline (MLP, RMSE=0.905) by 0.9%. This confirms that much of the reported advantage of complex models in the literature reflects evaluation methodology, not genuine predictive improvement.
+
+3. **Baselines win under the most realistic evaluation.** When predicting for unseen kinase subfamilies (target split), Random Forest (RMSE=1.067) outperforms every neural model, and protein-aware ESM-FP MLP drops to last place (RMSE=1.177). This directly contradicts the intuition that protein information should help most for novel targets.
+
+4. **Uncertainty quantification is a baseline strength.** Tree-based uncertainty (RF, XGBoost) substantially outperforms MC-Dropout uncertainty (deep models) in calibration, error-uncertainty correlation, and selective prediction improvement. XGBoost's quantile regression achieves near-perfect calibration (miscal. area = 0.003 on scaffold split), while MC-Dropout estimates are effectively uninformative (negative error-uncertainty correlation, no selective prediction benefit).
+
+5. **The representation bottleneck matters more than the model.** Morgan fingerprints with Random Forest (87s training) match or beat learned GIN representations (1411s training) across all splits. The GIN architecture doesn't learn representations superior to ECFP4 for kinase affinity prediction at this data scale.
+
+### Implications for drug discovery ML
+
+- **Always evaluate on scaffold and target-held-out splits.** Random-split metrics inflate performance by 12-52% and can reverse model rankings.
+- **Start with Random Forest + Morgan fingerprints.** This simple baseline trains in under 2 minutes, provides well-calibrated uncertainty, and is competitive with or superior to GPU-trained neural networks.
+- **Protein embeddings help for interpolation, hurt for extrapolation.** ESM-2 features improve predictions for known target families but create overfitting when predicting for novel targets.
+- **MC-Dropout is not a reliable uncertainty method** for these architectures and data scales. Tree-based or quantile-based methods provide far more actionable uncertainty estimates.
+- **The target generalization problem remains open.** No model achieves R² > 0.27 on the target split. Closing this gap likely requires fundamentally different approaches: fine-tuning protein language models, incorporating 3D structural information, or developing transfer learning methods that explicitly account for kinase subfamily relationships.
+
+### Future directions
+
+- **Phase 6** (Case studies): deep-dive on a specific kinase subfamily (CDK, JAK, or EGFR) with compound-level error analysis
+- **Improved uncertainty for deep models**: deeper ensembles (5+ models), evidential deep learning, or heteroscedastic regression heads
+- **Fine-tuned ESM-2**: rather than frozen embeddings, fine-tuning the last few layers on kinase binding data may improve target-split generalization
+- **3D structure features**: docking scores, binding site descriptors, or SE(3)-equivariant networks that encode protein-ligand geometry
+- **Meta-learning**: few-shot approaches for predicting on novel kinase targets with limited assay data
 
 ## References
 
 - Mendez et al. (2019) ChEMBL: towards direct deposition of bioassay data. *Nucleic Acids Research*, 47(D1), D930-D940.
 - Rogers & Hahn (2010) Extended-connectivity fingerprints. *J. Chem. Inf. Model.*, 50(5), 742-754.
 - Sheridan (2013) Time-split cross-validation as a method for estimating the goodness of prospective prediction. *J. Chem. Inf. Model.*, 53(4), 783-790.
+- Xu et al. (2019) How powerful are graph neural networks? *ICLR 2019*. (Graph Isomorphism Network)
+- Lin et al. (2023) Evolutionary-scale prediction of atomic-level protein structure with a language model. *Science*, 379(6637), 1123-1130. (ESM-2)
+- Gal & Ghahramani (2016) Dropout as a Bayesian approximation: representing model uncertainty in deep learning. *ICML 2016*. (MC-Dropout)

@@ -1,0 +1,19 @@
+{
+  "model": "elasticnet",
+  "split": "target",
+  "miscalibration_area": NaN,
+  "uq_pearson_r": NaN,
+  "uq_spearman_rho": NaN,
+  "selective_rmse_at_50pct": NaN,
+  "selective_improvement_50pct": NaN,
+  "n_targets_evaluated": 44,
+  "per_target_rmse_median": 1.1848493731917675,
+  "per_target_rmse_mean": 1.202437602739379,
+  "per_target_rmse_std": 0.21849309042185988,
+  "per_target_r2_median": -0.28509345832891053,
+  "noise_n_clean": 35422,
+  "noise_n_noisy": 109,
+  "noise_clean_rmse": 1.267580152911975,
+  "noise_noisy_rmse": 1.15791631518816,
+  "noise_rmse_delta": -0.10966383772381505
+}

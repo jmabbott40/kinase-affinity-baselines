@@ -2,7 +2,7 @@
   "model": "elasticnet",
   "split": "target",
   "features": "rdkit_descriptors",
-  "train_time_seconds": 52.0,
+  "train_time_seconds": 49.8,
   "n_train": 251532,
   "n_val": 65811,
   "n_test": 35531,

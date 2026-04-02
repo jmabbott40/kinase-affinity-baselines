@@ -1,0 +1,20 @@
+{
+  "model": "fusion",
+  "split": "random",
+  "train_time_seconds": 1551.4,
+  "best_epoch": 98,
+  "n_train": 282299,
+  "n_val": 35287,
+  "n_test": 35288,
+  "test_rmse": 0.7927055227629737,
+  "test_mae": 0.6026920833451979,
+  "test_r2": 0.6126183767459302,
+  "test_pearson_r": 0.7836720605255407,
+  "test_spearman_rho": 0.7665601741961068,
+  "test_auroc": 0.8682340310496914,
+  "test_auprc": 0.9543197430118371,
+  "test_precision_at_100": 1.0,
+  "test_precision_at_500": 0.998,
+  "test_ef_1pct": 1.296828488478924,
+  "test_ef_5pct": 1.2924175072255943
+}

@@ -2,7 +2,7 @@
   "model": "xgboost",
   "split": "scaffold",
   "features": "morgan_fingerprint",
-  "train_time_seconds": 103.4,
+  "train_time_seconds": 110.9,
   "n_train": 282301,
   "n_val": 35288,
   "n_test": 35285,

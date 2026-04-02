@@ -1,0 +1,20 @@
+{
+  "model": "gnn",
+  "split": "target",
+  "train_time_seconds": 341.6,
+  "best_epoch": 10,
+  "n_train": 251532,
+  "n_val": 65811,
+  "n_test": 35531,
+  "test_rmse": 1.1458278793414076,
+  "test_mae": 0.9160204251508843,
+  "test_r2": 0.15345102693076484,
+  "test_pearson_r": 0.44106607555810906,
+  "test_spearman_rho": 0.38856804004440576,
+  "test_auroc": 0.6575448705016509,
+  "test_auprc": 0.8210340111777643,
+  "test_precision_at_100": 0.98,
+  "test_precision_at_500": 0.988,
+  "test_ef_1pct": 1.3779625277429663,
+  "test_ef_5pct": 1.3449211321895413
+}

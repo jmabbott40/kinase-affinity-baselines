@@ -1,0 +1,20 @@
+{
+  "model": "fusion",
+  "split": "scaffold",
+  "train_time_seconds": 1178.4,
+  "best_epoch": 61,
+  "n_train": 282301,
+  "n_val": 35288,
+  "n_test": 35285,
+  "test_rmse": 0.94447231423927,
+  "test_mae": 0.7257342314980296,
+  "test_r2": 0.4486141243623085,
+  "test_pearson_r": 0.6765254568727563,
+  "test_spearman_rho": 0.6573292738920382,
+  "test_auroc": 0.8206711882023549,
+  "test_auprc": 0.9419237095933429,
+  "test_precision_at_100": 1.0,
+  "test_precision_at_500": 1.0,
+  "test_ef_1pct": 1.2576184196457212,
+  "test_ef_5pct": 1.2490631923011926
+}

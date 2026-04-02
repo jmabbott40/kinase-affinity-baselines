@@ -1,0 +1,20 @@
+{
+  "model": "esm_fp_mlp",
+  "split": "random",
+  "train_time_seconds": 228.9,
+  "best_epoch": 50,
+  "n_train": 282299,
+  "n_val": 35287,
+  "n_test": 35288,
+  "test_rmse": 0.7753475829494287,
+  "test_mae": 0.5821501483954531,
+  "test_r2": 0.6293976903848748,
+  "test_pearson_r": 0.7935155834528652,
+  "test_spearman_rho": 0.7762582112530223,
+  "test_auroc": 0.8729223638232991,
+  "test_auprc": 0.9553587711026985,
+  "test_precision_at_100": 1.0,
+  "test_precision_at_500": 0.998,
+  "test_ef_1pct": 1.2931443166366543,
+  "test_ef_5pct": 1.2924175072255943
+}

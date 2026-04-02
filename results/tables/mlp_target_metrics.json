@@ -2,7 +2,7 @@
   "model": "mlp",
   "split": "target",
   "features": "morgan_fingerprint",
-  "train_time_seconds": 593.3,
+  "train_time_seconds": 599.2,
   "n_train": 251532,
   "n_val": 65811,
   "n_test": 35531,

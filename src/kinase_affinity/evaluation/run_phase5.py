@@ -43,7 +43,10 @@ from kinase_affinity.evaluation.uncertainty import (
 )
 from kinase_affinity.visualization.plots import (
     plot_calibration_diagram,
+    plot_multi_model_calibration,
+    plot_multi_model_selective,
     plot_per_target_histogram,
+    plot_performance_degradation,
     plot_predicted_vs_actual,
     plot_selective_prediction,
     plot_split_comparison,
@@ -58,7 +61,9 @@ PRED_DIR = RESULTS_DIR / "predictions"
 FIGURES_DIR = RESULTS_DIR / "figures"
 TABLES_DIR = RESULTS_DIR / "tables"
 
-ALL_MODELS = ["random_forest", "xgboost", "elasticnet", "mlp"]
+BASELINE_MODELS = ["random_forest", "xgboost", "elasticnet", "mlp"]
+DEEP_MODELS = ["esm_fp_mlp", "gnn", "fusion"]
+ALL_MODELS = BASELINE_MODELS + DEEP_MODELS
 ALL_SPLITS = ["random", "scaffold", "target"]
 
 
@@ -277,6 +282,9 @@ def run_all_analyses(dataset_version: str = "v1") -> pd.DataFrame:
         # Generate cross-model comparison plots
         _generate_comparison_plots(dataset_version)
 
+        # Generate multi-model overlay plots (calibration, selective, degradation)
+        _generate_multi_model_plots(summary)
+
         return summary
 
     logger.warning("No experiments analyzed!")
@@ -284,14 +292,27 @@ def run_all_analyses(dataset_version: str = "v1") -> pd.DataFrame:
 
 
 def _generate_comparison_plots(dataset_version: str = "v1") -> None:
-    """Generate plots comparing all models across splits."""
-    summary_path = TABLES_DIR / "phase4_summary.csv"
-    if not summary_path.exists():
+    """Generate plots comparing all models across splits.
+
+    Merges Phase 4 and Phase 7 summaries for unified comparison heatmaps.
+    """
+    dfs = []
+    for path_name in ["phase4_summary.csv", "phase7_summary.csv"]:
+        path = TABLES_DIR / path_name
+        if path.exists():
+            dfs.append(pd.read_csv(path))
+
+    if not dfs:
         return
 
-    summary_df = pd.read_csv(summary_path)
+    summary_df = pd.concat(dfs, ignore_index=True)
+    # Drop duplicates in case of re-runs (keep latest)
+    summary_df = summary_df.drop_duplicates(
+        subset=["model", "split"], keep="last"
+    )
 
-    for metric in ["test_rmse", "test_r2", "test_auroc"]:
+    for metric in ["test_rmse", "test_r2", "test_auroc", "test_pearson_r",
+                    "test_spearman_rho", "test_auprc"]:
         if metric in summary_df.columns:
             fig = plot_split_comparison(
                 summary_df, metric=metric,
@@ -299,6 +320,78 @@ def _generate_comparison_plots(dataset_version: str = "v1") -> None:
             )
             plt.close(fig)
             logger.info("Saved comparison heatmap: %s", metric)
+
+
+def _generate_multi_model_plots(phase5_summary: pd.DataFrame) -> None:
+    """Generate multi-model overlay plots for calibration and selective prediction."""
+    from kinase_affinity.evaluation.uncertainty import (
+        calibration_curve as calc_calibration,
+        selective_prediction_curve as calc_selective,
+    )
+
+    for split in ALL_SPLITS:
+        calibrations = {}
+        selective_curves = {}
+
+        for model in ALL_MODELS:
+            pred_path = PRED_DIR / f"{model}_{split}.npz"
+            if not pred_path.exists():
+                continue
+
+            preds = np.load(pred_path)
+            y_true = preds["y_test_true"]
+            y_pred = preds["y_test_pred"]
+            y_mean = preds["y_test_mean"]
+            y_std = preds["y_test_std"]
+
+            has_uncertainty = np.std(y_std) > 1e-10
+            if not has_uncertainty:
+                continue
+
+            # Calibration
+            expected, observed = calc_calibration(y_true, y_mean, y_std)
+            miscal = miscalibration_area(expected, observed)
+            calibrations[model] = (expected, observed, miscal)
+
+            # Selective prediction
+            retention, rmse_curve = calc_selective(y_true, y_pred, y_std)
+            selective_curves[model] = (retention, rmse_curve)
+
+        if calibrations:
+            fig = plot_multi_model_calibration(
+                calibrations,
+                title=f"Calibration Comparison: {split.capitalize()} Split",
+                save_path=FIGURES_DIR / f"calibration_comparison_{split}.png",
+            )
+            plt.close(fig)
+            logger.info("Saved multi-model calibration: %s", split)
+
+        if selective_curves:
+            fig = plot_multi_model_selective(
+                selective_curves,
+                title=f"Selective Prediction Comparison: {split.capitalize()} Split",
+                save_path=FIGURES_DIR / f"selective_comparison_{split}.png",
+            )
+            plt.close(fig)
+            logger.info("Saved multi-model selective prediction: %s", split)
+
+    # Performance degradation plots
+    dfs = []
+    for path_name in ["phase4_summary.csv", "phase7_summary.csv"]:
+        path = TABLES_DIR / path_name
+        if path.exists():
+            dfs.append(pd.read_csv(path))
+    if dfs:
+        combined = pd.concat(dfs, ignore_index=True)
+        combined = combined.drop_duplicates(subset=["model", "split"], keep="last")
+        for metric in ["test_rmse", "test_r2", "test_auroc"]:
+            if metric in combined.columns:
+                fig = plot_performance_degradation(
+                    combined, metric=metric,
+                    save_path=FIGURES_DIR / f"degradation_{metric}.png",
+                )
+                plt.close(fig)
+                logger.info("Saved degradation plot: %s", metric)
 
 
 def _json_default(obj):
@@ -317,8 +410,11 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Run Phase 5 evaluation and uncertainty analysis",
     )
-    parser.add_argument("--model", choices=ALL_MODELS, help="Specific model")
+    parser.add_argument("--model", choices=ALL_MODELS,
+                        help="Specific model (baseline or deep)")
     parser.add_argument("--split", choices=ALL_SPLITS, help="Specific split")
+    parser.add_argument("--all-models", action="store_true",
+                        help="Run analysis for all models including deep models")
     parser.add_argument("--dataset-version", default="v1")
     args = parser.parse_args()
 
