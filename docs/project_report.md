@@ -354,9 +354,66 @@ The degradation pattern from random → scaffold → target splits reveals each 
 
 ESM-FP MLP degrades the most (51.9%) from random to target split, confirming that its random-split advantage is inflated by target-identity leakage. Random Forest and XGBoost show the most graceful degradation (27-30%), making them more reliable across deployment scenarios.
 
-## 10. Case Study: [Target Family TBD]
+## 10. Case Study: JAK Family
 
-*Planned for Phase 6. Deep dive on a specific kinase subfamily with compound-level analysis of good and bad predictions.*
+### 10.1 Why JAK?
+
+The Janus kinase (JAK) family — JAK1, JAK2, JAK3, and TYK2 — was selected for the case study because it offers the richest analytical opportunity in our dataset: 36,059 records across 4 well-characterized members, with 2,498 compounds tested against all 4 JAKs. Multiple FDA-approved JAK inhibitors (tofacitinib, baricitinib, ruxolitinib) provide clinical context, and the high compound overlap between members (81% of JAK1 compounds also tested on JAK2) enables selectivity prediction analysis — a key question in JAK inhibitor design.
+
+### 10.2 Per-target model comparison
+
+JAK targets are generally easier to predict than the dataset average, likely due to their large training set sizes and well-explored SAR landscapes. On the random split:
+
+| Target | Best Model | RMSE | Dataset-wide RMSE (same model) |
+|--------|-----------|------|-------------------------------|
+| TYK2 | Fusion | 0.636 | 0.793 |
+| JAK2 | ESM-FP MLP | 0.691 | 0.775 |
+| JAK1 | ESM-FP MLP | 0.596 | 0.775 |
+| JAK3 | ESM-FP MLP | 0.656 | 0.775 |
+
+ESM-FP MLP dominates across JAK members on random splits, achieving 0.596 RMSE on JAK1 — 23% better than the dataset-wide average. This confirms that protein embeddings provide the most value when the model has seen abundant examples from the same target during training.
+
+### 10.3 JAK3 is the hardest JAK target
+
+Across all 7 models, JAK3 consistently has the highest RMSE (average 0.933 vs. 0.825 for TYK2). The radar chart analysis reveals why: JAK3 has the highest activity range (std=1.35), the highest fraction of noisy measurements (2.8%), and fewer compounds (7,201) than JAK1 or JAK2. The wider activity distribution and higher noise create a more challenging prediction landscape.
+
+### 10.4 Activity cliffs
+
+We identified 7 activity cliff pairs in the JAK test set (Tanimoto ≥ 0.85 and |ΔpActivity| ≥ 1.5). The most dramatic cliff involves two structurally identical compounds (Tanimoto = 1.000) with a 2.0 log-unit difference in JAK1 activity — likely reflecting different stereochemistry or measurement conditions not captured by canonical SMILES. JAK1 and JAK2 show more cliff pairs than JAK3 and TYK2, consistent with their larger and more densely explored compound sets where subtle structural modifications can dramatically alter potency.
+
+### 10.5 Selectivity prediction — where protein-aware models shine
+
+The most striking Phase 6 finding: **protein-aware models dramatically outperform fingerprint-based models on selectivity prediction**, even when overall affinity prediction is similar.
+
+On the scaffold split, with 624 compounds tested against 2+ JAK members:
+
+| Model | Top-1 JAK Accuracy | Rank Correlation (ρ) |
+|-------|-------------------|---------------------|
+| Random Forest | 51.6% | N/A (only 2 targets per compound) |
+| XGBoost | 51.6% | N/A |
+| MLP (baseline) | 51.8% | N/A |
+| **ESM-FP MLP** | **78.5%** | **0.781** |
+| GIN | 49.8% | 0.064 |
+| **Fusion** | **79.5%** | **0.744** |
+
+Fingerprint-based models (RF, XGBoost, MLP) achieve ~51% top-1 accuracy — barely above random chance for binary comparisons. They cannot distinguish which JAK member a compound preferentially inhibits because they see only ligand structure, which is identical across JAK assays for the same compound.
+
+ESM-FP MLP and Fusion achieve ~79% accuracy by incorporating ESM-2 protein embeddings, which encode the sequence differences between JAK family members. This is the clearest evidence in our entire study that protein-aware models provide genuine value — not for absolute affinity prediction (where baselines match them), but for **relative selectivity prediction across related targets**.
+
+The GIN model (49.8%) fails at selectivity because it also sees only ligand structure, confirming that this is a protein-representation advantage, not a ligand-representation advantage.
+
+### 10.6 Worst predictions
+
+The worst-predicted JAK compounds show interesting model-specific failure patterns:
+- **Random Forest**: failures spread across JAK1 (8), JAK3 (5), JAK2 (4), TYK2 (3), dominated by IC50 measurements (14/20)
+- **ESM-FP MLP**: failures concentrated on JAK2 (10/20), suggesting the model overfits to JAK2's larger training set and makes biased predictions for edge-case JAK2 compounds
+- **Fusion**: failures split between JAK3 (7) and JAK2 (7), with JAK1 failures (6) — no TYK2 failures, consistent with TYK2 being easiest to predict
+
+Notably, none of the top-20 worst predictions per model are flagged as noisy measurements, indicating that prediction failures reflect genuine model limitations rather than data quality issues.
+
+### 10.7 Target split caveat
+
+An important finding: **no JAK test compounds exist in the target-held-out split**. All four JAK members were assigned to the training fold during target-based splitting. This means the target-split results in Section 9 evaluate generalization to other kinase subfamilies (e.g., CDKs, MAP kinases) using JAK as *training* data, not as a prediction target. This is by design — the target split tests cross-subfamily transfer, and JAK happens to fall on the training side of the partition.
 
 ## 11. Conclusions
 

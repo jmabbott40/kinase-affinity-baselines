@@ -1,0 +1,8 @@
+model,split,n_compounds,top1_accuracy,mean_rank_corr,median_rank_corr,n_with_rank_corr
+random_forest,scaffold,624,0.5160256410256411,,,0
+xgboost,scaffold,624,0.5160256410256411,,,0
+elasticnet,scaffold,624,0.5160256410256411,,,0
+mlp,scaffold,624,0.5176282051282052,,,0
+esm_fp_mlp,scaffold,624,0.7852564102564102,0.7808661155727554,1.0,136
+gnn,scaffold,624,0.4983974358974359,0.06405059211015046,0.0,59
+fusion,scaffold,624,0.7948717948717948,0.7436159287802229,1.0,136
