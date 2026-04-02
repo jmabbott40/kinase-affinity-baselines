@@ -2,7 +2,7 @@
 
 **When do complex, structure-aware ML models outperform simple cheminformatics baselines for kinase inhibitor binding affinity prediction?**
 
-## Motivation
+## Experimental Context and Overview
 
 Published ML models for protein–ligand affinity prediction often report impressive performance, but evaluations frequently rely on random train/test splits that allow data leakage through structural analogs. This project systematically evaluates whether protein-aware and structure-based models provide genuine improvements over simple cheminformatics baselines, using:
 
@@ -25,7 +25,7 @@ Published ML models for protein–ligand affinity prediction often report impres
 
 See the [full project report](docs/project_report.md) for detailed analysis.
 
-## Scientific Questions
+## Goals of Study
 
 1. How well can ligand-only fingerprint features predict kinase inhibitor binding affinity?
 2. How much does performance degrade under scaffold and target-based splits vs. random splits?
@@ -116,15 +116,13 @@ See [`docs/data_card.md`](docs/data_card.md) for full dataset documentation.
 - **Uncertainty**: calibration curves, selective prediction, error–uncertainty correlation
 - **Case study**: JAK family (JAK1/2/3, TYK2) selectivity and per-target analysis
 
-## Project Roadmap
-
-- [x] Phase 1: Repository scaffolding and environment setup
-- [x] Phase 2: Data pipeline (ChEMBL ingestion → curated dataset)
-- [x] Phase 3: Feature engineering (Morgan FP, RDKit descriptors)
-- [x] Phase 4: Baseline models (RF, XGBoost, ElasticNet, MLP) — 12 experiments
-- [x] Phase 5: Evaluation and uncertainty analysis — calibration, selective prediction, error analysis
-- [x] Phase 6: Case study — JAK kinase subfamily deep dive with selectivity analysis
-- [x] Phase 7: Advanced models — GIN, ESM-2 protein embeddings, GNN+ESM fusion
+## Project Overview
+1: Data pipeline (ChEMBL ingestion → curated dataset)
+2: Feature engineering (Morgan FP, RDKit descriptors)
+3: Baseline models (RF, XGBoost, ElasticNet, MLP) — 12 experiments
+4: Evaluation and uncertainty analysis — calibration, selective prediction, error analysis
+5: Case study — JAK kinase subfamily deep dive with selectivity analysis
+6: Advanced models — GIN, ESM-2 protein embeddings, GNN+ESM fusion
 
 ## Quick Start
 
@@ -159,25 +157,25 @@ pytest tests/
 ### Usage
 
 ```bash
-# Phase 2: Data pipeline
+# Data pipeline:
 python -m kinase_affinity.data.fetch              # Fetch raw data from ChEMBL
 python -m kinase_affinity.data.curate             # Standardize and curate dataset
 
-# Phase 3: Feature engineering
+# Feature engineering
 python -m kinase_affinity.features.fingerprints   # Morgan fingerprints (2048-bit)
 python -m kinase_affinity.features.descriptors    # RDKit 2D descriptors
 
-# Phase 4: Baseline models (CPU)
+# Baseline models (CPU)
 python -m kinase_affinity.training.trainer --all
 
-# Phase 5: Evaluation and uncertainty analysis
+# Evaluation and uncertainty analysis
 python -m kinase_affinity.evaluation.run_phase5
 python -m kinase_affinity.training.tune --all     # Hyperparameter tuning
 
-# Phase 6: JAK case study
+# JAK case study
 python scripts/run_phase6_case_study.py
 
-# Phase 7: Advanced models (GPU required)
+# Advanced models (GPU required)
 python -m kinase_affinity.data.protein_sequences      # Fetch kinase sequences
 python -m kinase_affinity.features.protein_embeddings  # Compute ESM-2 embeddings
 python -m kinase_affinity.training.deep_trainer --all  # Train GIN, ESM-FP MLP, Fusion
