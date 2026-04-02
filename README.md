@@ -11,6 +11,20 @@ Published ML models for protein–ligand affinity prediction often report impres
 - **Uncertainty quantification** to assess when predictions should be trusted
 - **Precision-focused evaluation** relevant to real drug discovery prioritization
 
+## Key Findings
+
+> **Simple baselines are remarkably hard to beat.** Random Forest with Morgan fingerprints (87s training) matches or exceeds GPU-trained graph neural networks across all evaluation settings.
+
+| Finding | Detail |
+|---------|--------|
+| Random split (easy) | ESM-FP MLP wins (RMSE=0.775), 5.3% better than RF (0.818) |
+| Scaffold split (realistic) | ESM-FP MLP barely edges baselines (0.897 vs 0.905), <1% improvement |
+| Target split (hardest) | **Random Forest wins** (RMSE=1.067), beating all neural models |
+| Uncertainty | XGBoost quantile regression best calibrated (miscal=0.003); MC-Dropout uninformative |
+| JAK selectivity | **Protein-aware models shine**: 79% top-1 accuracy vs 52% for fingerprint models |
+
+See the [full project report](docs/project_report.md) for detailed analysis.
+
 ## Scientific Questions
 
 1. How well can ligand-only fingerprint features predict kinase inhibitor binding affinity?
@@ -44,20 +58,55 @@ See [`docs/data_card.md`](docs/data_card.md) for full dataset documentation.
 
 ### Baselines
 
-| Model | Features | Uncertainty |
-|-------|----------|-------------|
-| Random Forest | Morgan FP (2048-bit) | Tree prediction variance |
-| XGBoost | Morgan FP (2048-bit) | Quantile regression |
-| ElasticNet | RDKit 2D descriptors | Bootstrap CI |
-| MLP | Morgan FP (2048-bit) | Ensemble variance |
+| Model | Features | Uncertainty | Train Time |
+|-------|----------|-------------|------------|
+| Random Forest | Morgan FP (2048-bit) | Tree prediction variance | ~87s |
+| XGBoost | Morgan FP (2048-bit) | Quantile regression | ~110s |
+| ElasticNet | RDKit 2D descriptors | Bootstrap CI | ~59s |
+| MLP | Morgan FP (2048-bit) | Ensemble variance (3 models) | ~650s |
 
 ### Advanced Neural Networks
 
-| Model | Ligand Representation | Protein Representation | Uncertainty |
-|-------|----------------------|----------------------|-------------|
-| ESM-FP MLP | Morgan FP (2048-bit) | ESM-2 embeddings (1280-dim) | MC-Dropout |
-| GIN (Graph Isomorphism Network) | Molecular graph (atom/bond features) | — | MC-Dropout |
-| Fusion | GIN molecular graph | ESM-2 embeddings (1280-dim) | MC-Dropout |
+| Model | Ligand Representation | Protein Representation | Uncertainty | Train Time |
+|-------|----------------------|----------------------|-------------|------------|
+| ESM-FP MLP | Morgan FP (2048-bit) | ESM-2 embeddings (1280-dim) | MC-Dropout | ~230s |
+| GIN (Graph Isomorphism Network) | Molecular graph (atom/bond features) | — | MC-Dropout | ~1400s |
+| GIN + ESM-2 Fusion | GIN molecular graph | ESM-2 embeddings (1280-dim) | MC-Dropout | ~1550s |
+
+## Results Summary
+
+### Regression Performance (RMSE, lower is better)
+
+| Model | Random | Scaffold | Target |
+|-------|--------|----------|--------|
+| **ESM-FP MLP** | **0.775** | **0.897** | 1.177 |
+| Fusion | 0.793 | 0.945 | 1.138 |
+| Random Forest | 0.818 | 0.919 | **1.067** |
+| MLP (baseline) | 0.824 | 0.905 | 1.090 |
+| GIN | 0.829 | 0.941 | 1.146 |
+| XGBoost | 0.893 | 0.961 | 1.135 |
+| ElasticNet | 1.274 | 1.274 | 1.267 |
+
+### Uncertainty Quality (Miscalibration Area, lower is better)
+
+| Model | Random | Scaffold | Target |
+|-------|--------|----------|--------|
+| **XGBoost** | **0.017** | **0.003** | **0.048** |
+| Random Forest | 0.120 | 0.037 | 0.166 |
+| ESM-FP MLP | 0.167 | 0.175 | 0.186 |
+| Fusion | 0.239 | 0.259 | 0.283 |
+| MLP (baseline) | 0.256 | 0.252 | 0.301 |
+| GIN | 0.317 | 0.322 | 0.227 |
+
+### JAK Family Selectivity (Case Study)
+
+| Model | Top-1 Accuracy | Rank Correlation |
+|-------|---------------|-----------------|
+| **Fusion** | **79.5%** | 0.744 |
+| **ESM-FP MLP** | **78.5%** | **0.781** |
+| MLP (baseline) | 51.8% | N/A |
+| Random Forest | 51.6% | N/A |
+| GIN | 49.8% | 0.064 |
 
 ## Evaluation
 
@@ -65,16 +114,17 @@ See [`docs/data_card.md`](docs/data_card.md) for full dataset documentation.
 - **Classification**: AUROC, AUPRC, precision@k (at pActivity ≥ 6.0 threshold)
 - **Splits**: random, scaffold (Murcko), target-based (kinase subfamily holdout)
 - **Uncertainty**: calibration curves, selective prediction, error–uncertainty correlation
+- **Case study**: JAK family (JAK1/2/3, TYK2) selectivity and per-target analysis
 
 ## Project Roadmap
 
 - [x] Phase 1: Repository scaffolding and environment setup
 - [x] Phase 2: Data pipeline (ChEMBL ingestion → curated dataset)
 - [x] Phase 3: Feature engineering (Morgan FP, RDKit descriptors)
-- [x] Phase 4: Baseline models (RF, XGBoost, ElasticNet, MLP) — 12 experiments (4 models × 3 splits)
-- [x] Phase 5: Evaluation and uncertainty analysis — calibration, selective prediction, error analysis, hyperparameter tuning
-- [ ] Phase 6: Case studies (kinase subfamily deep dive)
-- [x] Phase 7: Advanced models — GIN, ESM-2 protein embeddings, GNN+ESM fusion (training in progress on AWS)
+- [x] Phase 4: Baseline models (RF, XGBoost, ElasticNet, MLP) — 12 experiments
+- [x] Phase 5: Evaluation and uncertainty analysis — calibration, selective prediction, error analysis
+- [x] Phase 6: Case study — JAK kinase subfamily deep dive with selectivity analysis
+- [x] Phase 7: Advanced models — GIN, ESM-2 protein embeddings, GNN+ESM fusion
 
 ## Quick Start
 
@@ -109,27 +159,26 @@ pytest tests/
 ### Usage
 
 ```bash
-# Fetch raw data from ChEMBL
-python -m kinase_affinity.data.fetch
+# Phase 2: Data pipeline
+python -m kinase_affinity.data.fetch              # Fetch raw data from ChEMBL
+python -m kinase_affinity.data.curate             # Standardize and curate dataset
 
-# Standardize molecules and curate dataset
-python -m kinase_affinity.data.curate
+# Phase 3: Feature engineering
+python -m kinase_affinity.features.fingerprints   # Morgan fingerprints (2048-bit)
+python -m kinase_affinity.features.descriptors    # RDKit 2D descriptors
 
-# Generate features
-python -m kinase_affinity.features.fingerprints
-python -m kinase_affinity.features.descriptors
-
-# Train baseline models (CPU)
+# Phase 4: Baseline models (CPU)
 python -m kinase_affinity.training.trainer --all
 
-# Run Phase 5 evaluation and uncertainty analysis
+# Phase 5: Evaluation and uncertainty analysis
 python -m kinase_affinity.evaluation.run_phase5
+python -m kinase_affinity.training.tune --all     # Hyperparameter tuning
 
-# Hyperparameter tuning
-python -m kinase_affinity.training.tune --all
+# Phase 6: JAK case study
+python scripts/run_phase6_case_study.py
 
-# Advanced models (GPU required)
-python -m kinase_affinity.data.protein_sequences   # Fetch kinase sequences
+# Phase 7: Advanced models (GPU required)
+python -m kinase_affinity.data.protein_sequences      # Fetch kinase sequences
 python -m kinase_affinity.features.protein_embeddings  # Compute ESM-2 embeddings
 python -m kinase_affinity.training.deep_trainer --all  # Train GIN, ESM-FP MLP, Fusion
 ```
@@ -141,17 +190,21 @@ python -m kinase_affinity.training.deep_trainer --all  # Train GIN, ESM-FP MLP, 
 ├── data/
 │   ├── raw/           # Raw ChEMBL exports (gitignored)
 │   └── processed/     # Versioned curated datasets (gitignored)
-├── notebooks/         # Analysis and visualization notebooks
-├── scripts/           # AWS runner scripts for GPU training
+├── notebooks/         # Analysis and visualization notebooks (01-05)
+├── scripts/           # AWS runner scripts, Phase 6 case study
 ├── src/kinase_affinity/
 │   ├── data/          # Ingestion, standardization, curation, splits, protein sequences
 │   ├── features/      # Morgan FP, RDKit descriptors, molecular graphs, ESM-2 embeddings
 │   ├── models/        # RF, XGBoost, ElasticNet, MLP, GIN, ESM-FP MLP, Fusion
 │   ├── training/      # Baseline trainer, deep trainer, hyperparameter tuning
 │   ├── evaluation/    # Metrics, uncertainty calibration, error analysis
-│   └── visualization/ # Plotting utilities
+│   └── visualization/ # Plotting utilities (heatmaps, calibration, degradation curves)
 ├── tests/             # Unit tests (32+ tests across all phases)
-├── results/           # Output tables and figures (gitignored figures)
+├── results/
+│   ├── predictions/   # .npz files (21 experiments: 7 models × 3 splits)
+│   ├── models/        # Saved model weights (7.7 GB)
+│   ├── tables/        # Metrics CSVs, per-target breakdowns, Phase 5/6/7 summaries
+│   └── figures/       # 110+ plots (scatter, calibration, heatmaps, degradation, JAK)
 └── docs/              # Data card and project report
 ```
 
@@ -159,6 +212,8 @@ python -m kinase_affinity.training.deep_trainer --all  # Train GIN, ESM-FP MLP, 
 
 - Bioactivity data from [ChEMBL](https://www.ebi.ac.uk/chembl/) (Mendez et al., 2019)
 - Molecular processing with [RDKit](https://www.rdkit.org/)
+- Protein embeddings from [ESM-2](https://github.com/facebookresearch/esm) (Lin et al., 2023)
+- Graph neural networks with [PyTorch Geometric](https://pyg.org/)
 
 ## License
 
