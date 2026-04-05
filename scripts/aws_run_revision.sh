@@ -41,6 +41,8 @@ run_subset() {
     echo "============================================================"
     python -m kinase_affinity.data.subset --dataset-version v1 all
 
+    ESM92_DIR="data/processed/v1/subsets/esm92"
+
     echo ""
     echo "--- Training baselines on ESM-92 subset ---"
     for config in configs/rf_baseline.yaml configs/xgb_baseline.yaml \
@@ -50,6 +52,7 @@ run_subset() {
             python -m kinase_affinity.training.trainer \
                 --config "$config" --split "$split" \
                 --output-suffix "_esm92" \
+                --data-dir-override "$ESM92_DIR" \
                 --dataset-version v1 || echo "  FAILED: $config / $split"
         done
     done
@@ -62,6 +65,7 @@ run_subset() {
             python -m kinase_affinity.training.deep_trainer \
                 --config "$config" --split "$split" \
                 --output-suffix "_esm92" \
+                --data-dir-override "$ESM92_DIR" \
                 --dataset-version v1 || echo "  FAILED: $config / $split"
         done
     done

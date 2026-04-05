@@ -757,6 +757,10 @@ def main() -> None:
         "--output-suffix", default="",
         help="Suffix for output directories (e.g., '_seed42', '_zero')",
     )
+    parser.add_argument(
+        "--data-dir-override", type=Path, default=None,
+        help="Override data directory (e.g., data/processed/v1/subsets/esm92)",
+    )
     args = parser.parse_args()
 
     if args.all:
@@ -771,6 +775,7 @@ def main() -> None:
             args.config, args.split, args.dataset_version,
             training_seed=args.training_seed,
             fallback_strategy=args.fallback_strategy,
+            data_dir_override=args.data_dir_override,
             output_suffix=args.output_suffix,
         )
     else:
