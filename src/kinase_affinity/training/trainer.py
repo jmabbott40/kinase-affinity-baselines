@@ -143,6 +143,9 @@ def train_and_evaluate(
     config_path: Path,
     split_strategy: str = "random",
     dataset_version: str = "v1",
+    training_seed: int | None = None,
+    data_dir_override: Path | None = None,
+    output_suffix: str = "",
 ) -> dict:
     """Run the full train/evaluate pipeline for one model + split combination.
 
@@ -154,6 +157,13 @@ def train_and_evaluate(
         One of 'random', 'scaffold', 'target'.
     dataset_version : str
         Dataset version (subdirectory of data/processed/).
+    training_seed : int, optional
+        If provided, overrides the random_state in model config.
+        Used for multi-seed robustness experiments.
+    data_dir_override : Path, optional
+        Override the data directory (for subset experiments).
+    output_suffix : str
+        Suffix for output directories (e.g., "_seed42", "_esm92").
 
     Returns
     -------
@@ -164,15 +174,22 @@ def train_and_evaluate(
     model_name = config["model"]["name"]
     feature_type = config["features"]["type"]
 
+    # Override random_state if training_seed is provided
+    if training_seed is not None:
+        config.setdefault("hyperparameters", {})["random_state"] = training_seed
+
     logger.info("=" * 70)
     logger.info(
-        "EXPERIMENT: model=%s, split=%s, features=%s",
-        model_name, split_strategy, feature_type,
+        "EXPERIMENT: model=%s, split=%s, features=%s, seed=%s",
+        model_name, split_strategy, feature_type, training_seed,
     )
     logger.info("=" * 70)
 
     # --- 1. Load curated dataset ---
-    data_dir = DATA_DIR / dataset_version
+    if data_dir_override is not None:
+        data_dir = data_dir_override
+    else:
+        data_dir = DATA_DIR / dataset_version
     curated_path = data_dir / "curated_activities.parquet"
     logger.info("Loading curated dataset from %s", curated_path)
     df = pd.read_parquet(curated_path)
@@ -180,6 +197,9 @@ def train_and_evaluate(
 
     # --- 2. Load split indices ---
     split_path = data_dir / "splits" / f"{split_strategy}_split.json"
+    if not split_path.exists():
+        # Fall back to main dataset splits
+        split_path = DATA_DIR / dataset_version / "splits" / f"{split_strategy}_split.json"
     logger.info("Loading %s split from %s", split_strategy, split_path)
     with open(split_path) as f:
         split_indices = json.load(f)
@@ -275,11 +295,14 @@ def train_and_evaluate(
 
     # --- 11. Save everything ---
     # Save model
-    model_dir = RESULTS_DIR / "models" / model_name / split_strategy
+    model_subdir = f"{model_name}{output_suffix}"
+    model_dir = RESULTS_DIR / "models" / model_subdir / split_strategy
     model.save(model_dir)
 
     # Save predictions
     pred_dir = RESULTS_DIR / "predictions"
+    if output_suffix:
+        pred_dir = RESULTS_DIR / f"predictions{output_suffix}"
     pred_dir.mkdir(parents=True, exist_ok=True)
     np.savez(
         pred_dir / f"{model_name}_{split_strategy}.npz",
@@ -298,6 +321,8 @@ def train_and_evaluate(
         "model": model_name,
         "split": split_strategy,
         "features": feature_type,
+        "training_seed": training_seed,
+        "output_suffix": output_suffix,
         "train_time_seconds": round(train_time, 1),
         "n_train": len(train_idx),
         "n_val": len(val_idx),
@@ -309,6 +334,8 @@ def train_and_evaluate(
 
     # Save metrics JSON
     metrics_dir = RESULTS_DIR / "tables"
+    if output_suffix:
+        metrics_dir = RESULTS_DIR / f"tables{output_suffix}"
     metrics_dir.mkdir(parents=True, exist_ok=True)
     metrics_path = metrics_dir / f"{model_name}_{split_strategy}_metrics.json"
     with open(metrics_path, "w") as f:
@@ -327,13 +354,21 @@ def train_and_evaluate(
     return all_metrics
 
 
-def run_all_experiments(dataset_version: str = "v1") -> pd.DataFrame:
+def run_all_experiments(
+    dataset_version: str = "v1",
+    training_seed: int | None = None,
+    output_suffix: str = "",
+) -> pd.DataFrame:
     """Run all model × split combinations and save summary.
 
     Parameters
     ----------
     dataset_version : str
         Dataset version.
+    training_seed : int, optional
+        Training seed for reproducibility.
+    output_suffix : str
+        Suffix for output directories.
 
     Returns
     -------
@@ -351,12 +386,15 @@ def run_all_experiments(dataset_version: str = "v1") -> pd.DataFrame:
         for split in ALL_SPLITS:
             i += 1
             logger.info(
-                "\n%s\n  RUNNING EXPERIMENT %d/%d: %s × %s\n%s",
-                "#" * 70, i, total, config_path.stem, split, "#" * 70,
+                "\n%s\n  RUNNING EXPERIMENT %d/%d: %s × %s (seed=%s)\n%s",
+                "#" * 70, i, total, config_path.stem, split,
+                training_seed, "#" * 70,
             )
             try:
                 metrics = train_and_evaluate(
                     config_path, split, dataset_version,
+                    training_seed=training_seed,
+                    output_suffix=output_suffix,
                 )
                 results.append(metrics)
             except Exception:
@@ -367,8 +405,11 @@ def run_all_experiments(dataset_version: str = "v1") -> pd.DataFrame:
     # Save summary CSV
     if results:
         summary_df = pd.DataFrame(results)
-        summary_path = RESULTS_DIR / "tables" / "phase4_summary.csv"
-        summary_path.parent.mkdir(parents=True, exist_ok=True)
+        summary_dir = RESULTS_DIR / "tables"
+        if output_suffix:
+            summary_dir = RESULTS_DIR / f"tables{output_suffix}"
+        summary_dir.mkdir(parents=True, exist_ok=True)
+        summary_path = summary_dir / "phase4_summary.csv"
         summary_df.to_csv(summary_path, index=False)
         logger.info("Saved summary to %s", summary_path)
 
@@ -429,12 +470,28 @@ def main() -> None:
         "--all", action="store_true",
         help="Run all 12 experiments (4 models × 3 splits)",
     )
+    parser.add_argument(
+        "--training-seed", type=int, default=None,
+        help="Override random_state in model config for reproducibility",
+    )
+    parser.add_argument(
+        "--output-suffix", default="",
+        help="Suffix for output directories (e.g., '_seed42', '_esm92')",
+    )
     args = parser.parse_args()
 
     if args.all:
-        run_all_experiments(args.dataset_version)
+        run_all_experiments(
+            args.dataset_version,
+            training_seed=args.training_seed,
+            output_suffix=args.output_suffix,
+        )
     elif args.config:
-        train_and_evaluate(args.config, args.split, args.dataset_version)
+        train_and_evaluate(
+            args.config, args.split, args.dataset_version,
+            training_seed=args.training_seed,
+            output_suffix=args.output_suffix,
+        )
     else:
         parser.error("Provide --config CONFIG or --all")
 

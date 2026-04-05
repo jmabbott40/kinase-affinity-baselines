@@ -1,0 +1,508 @@
+target_chembl_id,pref_name,gene_symbol,kinase_group,n_records,fold
+CHEMBL262,Glycogen synthase kinase-3 beta,GSK3B,Other kinase,4541,test
+CHEMBL5464,Receptor-interacting serine/threonine-protein kinase 1,RIPK1,Other kinase,3878,test
+CHEMBL2292,Dual specificity tyrosine-phosphorylation-regulated kinase 1A,DYRK1A,Other kinase,2287,test
+CHEMBL2276,Mitogen-activated protein kinase 8,MAPK8,Other kinase,1888,test
+CHEMBL5407,Serine/threonine-protein kinase pim-3,PIM3,Other kinase,1679,test
+CHEMBL2828,Casein kinase I isoform delta,CSNK1D,Other kinase,1472,test
+CHEMBL4718,MAP kinase-interacting serine/threonine-protein kinase 1,MKNK1,Other kinase,1325,test
+CHEMBL1908389,Mitogen-activated protein kinase kinase kinase 12,MAP3K12,Other kinase,1085,test
+CHEMBL4225,Dual specificity protein kinase CLK2,CLK2,Other kinase,1044,test
+CHEMBL5543,Dual specificity tyrosine-phosphorylation-regulated kinase 1B,DYRK1B,Other kinase,1003,test
+CHEMBL3055,Cyclin-dependent kinase 7,CDK7,Other kinase,642,test
+CHEMBL4376,Dual specificity tyrosine-phosphorylation-regulated kinase 2,DYRK2,Other kinase,585,test
+CHEMBL4202,STE20-like serine/threonine-protein kinase,SLK,Other kinase,488,test
+CHEMBL4600,Serine/threonine-protein kinase PAK 1,PAK1,Other kinase,472,test
+CHEMBL4367,Tyrosine-protein kinase TXK,TXK,Other kinase,454,test
+CHEMBL3032,Serine/threonine-protein kinase N2,PKN2,Other kinase,405,test
+CHEMBL4079,Beta-adrenergic receptor kinase 1,GRK2,Other kinase,343,test
+CHEMBL4355,Cyclin-G-associated kinase,GAK,Other kinase,342,test
+CHEMBL2331053,"6-phosphofructo-2-kinase/fructose-2,6-bisphosphatase 3",PFKFB3,Other kinase,336,test
+CHEMBL5794,Serine/threonine-protein kinase Sgk2,SGK2,Other kinase,260,test
+CHEMBL2426,Casein kinase I isoform gamma-1,CSNK1G1,Other kinase,225,test
+CHEMBL3980,Serine/threonine-protein kinase 17B,STK17B,Other kinase,180,test
+CHEMBL2358,Casein kinase II subunit beta,CSNK2B,Other kinase,178,test
+CHEMBL6030,Eukaryotic translation initiation factor 2-alpha kinase 3,EIF2AK3,Other kinase,176,test
+CHEMBL4454,Tyrosine-protein kinase Fgr,FGR,Other kinase,130,test
+CHEMBL5455,Tyrosine-protein kinase Fes/Fps,FES,Other kinase,128,test
+CHEMBL2447,Deoxycytidine kinase,DCK,Other kinase,122,test
+CHEMBL2896,cGMP-dependent protein kinase 2,PRKG2,Other kinase,107,test
+CHEMBL4924,Ribosomal protein S6 kinase alpha-6,RPS6KA6,Other kinase,107,test
+CHEMBL1926492,Tau-tubulin kinase 1,TTBK1,Other kinase,81,test
+CHEMBL5907,Serine/threonine-protein kinase LATS2,LATS2,Other kinase,55,test
+CHEMBL1293199,Serine/threonine-protein kinase VRK1,VRK1,Other kinase,45,test
+CHEMBL1075166,G protein-coupled receptor kinase 3,GRK3,Other kinase,42,test
+CHEMBL4627,Myosin light chain kinase,MYLK3,Other kinase,37,test
+CHEMBL6162,Cyclin-dependent kinase 14,CDK14,Other kinase,33,test
+CHEMBL4309,Serine/threonine-protein kinase Nek6,NEK6,Other kinase,32,test
+CHEMBL4311,Serine/threonine-protein kinase PAK 6,PAK6,Other kinase,32,test
+CHEMBL5604,Dual specificity testis-specific protein kinase 1,TESK1,Other kinase,27,test
+CHEMBL5520,Casein kinase I isoform alpha-like,CSNK1A1L,Other kinase,20,test
+CHEMBL3111,Ribosomal protein S6 kinase beta-2,RPS6KB2,Other kinase,19,test
+CHEMBL2417352,Microtubule-associated serine/threonine-protein kinase 3,MAST3,Other kinase,9,test
+CHEMBL4105826,Serine/threonine-protein kinase greatwall,MASTL,Other kinase,9,test
+CHEMBL1908384,SNF-related serine/threonine-protein kinase,SNRK,Other kinase,7,test
+CHEMBL2417351,Microtubule-associated serine/threonine-protein kinase 4,MAST4,Other kinase,3,test
+CHEMBL4524035,Serine/threonine-protein kinase H1,PSKH1,Other kinase,3,test
+CHEMBL4295947,Ketosamine-3-kinase,FN3KRP,Other kinase,2,test
+CHEMBL2191,"ATP-dependent 6-phosphofructokinase, liver type",PFKL,Other kinase,1,test
+CHEMBL6066371,"FAST kinase domain-containing protein 5, mitochondrial",FASTKD5,Other kinase,1,test
+CHEMBL1974,Receptor-type tyrosine-protein kinase FLT3,FLT3,Tyrosine kinase,4253,test
+CHEMBL1957,Insulin-like growth factor 1 receptor,IGF1R,Tyrosine kinase,2542,test
+CHEMBL1868,Vascular endothelial growth factor receptor 1,FLT1,Tyrosine kinase,1470,test
+CHEMBL2007,Platelet-derived growth factor receptor alpha,PDGFRA,Tyrosine kinase,926,test
+CHEMBL2971,Tyrosine-protein kinase JAK2,JAK2,Other kinase,12530,train
+CHEMBL2835,Tyrosine-protein kinase JAK1,JAK1,Other kinase,10248,train
+CHEMBL5251,Tyrosine-protein kinase BTK,BTK,Other kinase,9684,train
+CHEMBL4005,"Phosphatidylinositol 4,5-bisphosphate 3-kinase catalytic subunit alpha isoform",PIK3CA,Other kinase,7714,train
+CHEMBL3778,Interleukin-1 receptor-associated kinase 4,IRAK4,Other kinase,7428,train
+CHEMBL3553,Non-receptor tyrosine-protein kinase TYK2,TYK2,Other kinase,5951,train
+CHEMBL4040,Mitogen-activated protein kinase 1,MAPK1,Other kinase,5222,train
+CHEMBL260,Mitogen-activated protein kinase 14,MAPK14,Other kinase,5210,train
+CHEMBL2147,Serine/threonine-protein kinase pim-1,PIM1,Other kinase,5135,train
+CHEMBL2842,Serine/threonine-protein kinase mTOR,MTOR,Other kinase,4965,train
+CHEMBL267,Proto-oncogene tyrosine-protein kinase Src,SRC,Other kinase,3927,train
+CHEMBL4282,RAC-alpha serine/threonine-protein kinase,AKT1,Other kinase,3735,train
+CHEMBL1075104,Leucine-rich repeat serine/threonine-protein kinase 2,LRRK2,Other kinase,3528,train
+CHEMBL4722,Aurora kinase A,AURKA,Other kinase,3486,train
+CHEMBL1862,Tyrosine-protein kinase ABL1,ABL1,Other kinase,3167,train
+CHEMBL4523,Serine/threonine-protein kinase pim-2,PIM2,Other kinase,2893,train
+CHEMBL4630,Serine/threonine-protein kinase Chk1,CHEK1,Other kinase,2799,train
+CHEMBL1906,RAF proto-oncogene serine/threonine-protein kinase,RAF1,Other kinase,2790,train
+CHEMBL3145,"Phosphatidylinositol 4,5-bisphosphate 3-kinase catalytic subunit beta isoform",PIK3CB,Other kinase,2763,train
+CHEMBL2185,Aurora kinase B,AURKB,Other kinase,2739,train
+CHEMBL301,Cyclin-dependent kinase 2,CDK2,Other kinase,2671,train
+CHEMBL258,Tyrosine-protein kinase Lck,LCK,Other kinase,2374,train
+CHEMBL5408,Serine/threonine-protein kinase TBK1,TBK1,Other kinase,2296,train
+CHEMBL2695,Focal adhesion kinase 1,PTK2,Other kinase,2160,train
+CHEMBL5024,Serine/threonine-protein kinase ATR,ATR,Other kinase,1937,train
+CHEMBL3116,Cyclin-dependent kinase 9,CDK9,Other kinase,1759,train
+CHEMBL4204,MAP kinase-interacting serine/threonine-protein kinase 2,MKNK2,Other kinase,1713,train
+CHEMBL2637,Mitogen-activated protein kinase 10,MAPK10,Other kinase,1624,train
+CHEMBL2850,Glycogen synthase kinase-3 alpha,GSK3A,Other kinase,1609,train
+CHEMBL308,Cyclin-dependent kinase 1,CDK1,Other kinase,1477,train
+CHEMBL2959,Tyrosine-protein kinase ITK/TSK,ITK,Other kinase,1472,train
+CHEMBL331,Cyclin-dependent kinase 4,CDK4,Other kinase,1439,train
+CHEMBL3983,Dual specificity protein kinase TTK,TTK,Other kinase,1404,train
+CHEMBL3142,DNA-dependent protein kinase catalytic subunit,PRKDC,Other kinase,1393,train
+CHEMBL3024,Serine/threonine-protein kinase PLK1,PLK1,Other kinase,1374,train
+CHEMBL5888,Mitogen-activated protein kinase kinase kinase 14,MAP3K14,Other kinase,1369,train
+CHEMBL4203,Dual specificity protein kinase CLK4,CLK4,Other kinase,1339,train
+CHEMBL5285,Mitogen-activated protein kinase kinase kinase 5,MAP3K5,Other kinase,1296,train
+CHEMBL6166,Mitogen-activated protein kinase kinase kinase kinase 4,MAP4K4,Other kinase,1257,train
+CHEMBL2534,3-phosphoinositide-dependent protein kinase 1,PDPK1,Other kinase,1240,train
+CHEMBL1841,Tyrosine-protein kinase Fyn,FYN,Other kinase,1237,train
+CHEMBL4937,Casein kinase I isoform epsilon,CSNK1E,Other kinase,1165,train
+CHEMBL2431,RAC-beta serine/threonine-protein kinase,AKT2,Other kinase,1160,train
+CHEMBL299,Protein kinase C alpha type,PRKCA,Other kinase,1148,train
+CHEMBL1991,Inhibitor of nuclear factor kappa-B kinase subunit beta,IKBKB,Other kinase,1146,train
+CHEMBL4179,Mitogen-activated protein kinase 9,MAPK9,Other kinase,1140,train
+CHEMBL4578,Maternal embryonic leucine zipper kinase,MELK,Other kinase,1094,train
+CHEMBL3587,Dual specificity mitogen-activated protein kinase kinase 1,MAP2K1,Other kinase,1085,train
+CHEMBL1772932,Mitotic checkpoint serine/threonine-protein kinase BUB1,BUB1,Other kinase,1082,train
+CHEMBL5491,Wee1-like protein kinase,WEE1,Other kinase,1054,train
+CHEMBL3861,"[Pyruvate dehydrogenase (acetyl-transferring)] kinase isozyme 2, mitochondrial",PDK2,Other kinase,1043,train
+CHEMBL3830,AP2-associated protein kinase 1,AAK1,Other kinase,1016,train
+CHEMBL2208,MAP kinase-activated protein kinase 2,MAPKAPK2,Other kinase,995,train
+CHEMBL2996,Protein kinase C delta type,PRKCD,Other kinase,948,train
+CHEMBL3629,Casein kinase II subunit alpha,CSNK2A1,Other kinase,936,train
+CHEMBL4224,Dual specificity protein kinase CLK1,CLK1,Other kinase,890,train
+CHEMBL2345,Ribosomal protein S6 kinase alpha-3,RPS6KA3,Other kinase,868,train
+CHEMBL4599,Activated CDC42 kinase 1,TNK2,Other kinase,817,train
+CHEMBL2527,Serine/threonine-protein kinase Chk2,CHEK2,Other kinase,797,train
+CHEMBL4766,"[Pyruvate dehydrogenase (acetyl-transferring)] kinase isozyme 1, mitochondrial",PDK1,Other kinase,789,train
+CHEMBL2508,Cyclin-dependent kinase 6,CDK6,Other kinase,770,train
+CHEMBL3788,Serine/threonine-protein kinase PLK4,PLK4,Other kinase,753,train
+CHEMBL4036,Cyclin-dependent kinase 5,CDK5,Other kinase,736,train
+CHEMBL3045,Protein kinase C beta type,PRKCB,Other kinase,722,train
+CHEMBL3836,LIM domain kinase 1,LIMK1,Other kinase,715,train
+CHEMBL1075165,Phosphatidylinositol 3-kinase catalytic subunit type 3,PIK3C3,Other kinase,695,train
+CHEMBL3905,Tyrosine-protein kinase Lyn,LYN,Other kinase,683,train
+CHEMBL3797,Serine-protein kinase ATM,ATM,Other kinase,679,train
+CHEMBL5014,Receptor-interacting serine/threonine-protein kinase 2,RIPK2,Other kinase,658,train
+CHEMBL1163101,Serine/threonine-protein kinase/endoribonuclease IRE1,ERN1,Other kinase,648,train
+CHEMBL5443,Cell division cycle 7-related protein kinase,CDC7,Other kinase,632,train
+CHEMBL3357,Interleukin-1 receptor-associated kinase 1,IRAK1,Other kinase,627,train
+CHEMBL5719,Cyclin-dependent kinase 8,CDK8,Other kinase,623,train
+CHEMBL2598,Protein kinase C iota type,PRKCI,Other kinase,613,train
+CHEMBL5330,Mitogen-activated protein kinase kinase kinase kinase 2,MAP4K2,Other kinase,613,train
+CHEMBL4482,Serine/threonine-protein kinase PAK 4,PAK4,Other kinase,606,train
+CHEMBL4575,Dual specificity tyrosine-phosphorylation-regulated kinase 3,DYRK3,Other kinase,571,train
+CHEMBL4101,cAMP-dependent protein kinase catalytic subunit alpha,PRKACA,Other kinase,553,train
+CHEMBL3234,Tyrosine-protein kinase HCK,HCK,Other kinase,550,train
+CHEMBL2595,Serine/threonine-protein kinase D3,PRKD3,Other kinase,524,train
+CHEMBL4708,Serine/threonine-protein kinase 3,STK3,Other kinase,514,train
+CHEMBL4527,TRAF2 and NCK-interacting protein kinase,TNIK,Other kinase,513,train
+CHEMBL3529,Inhibitor of nuclear factor kappa-B kinase subunit epsilon,IKBKE,Other kinase,501,train
+CHEMBL2250,Tyrosine-protein kinase Blk,BLK,Other kinase,495,train
+CHEMBL5261,Serine/threonine-protein kinase TAO1,TAOK1,Other kinase,487,train
+CHEMBL5358,eIF-2-alpha kinase GCN2,EIF2AK4,Other kinase,474,train
+CHEMBL4852,Mitogen-activated protein kinase kinase kinase kinase 5,MAP4K5,Other kinase,473,train
+CHEMBL3589,Adenosine kinase,ADK,Other kinase,456,train
+CHEMBL3476,Inhibitor of nuclear factor kappa-B kinase subunit alpha,CHUK,Other kinase,455,train
+CHEMBL4816,RAC-gamma serine/threonine-protein kinase,AKT3,Other kinase,446,train
+CHEMBL3268,Phosphatidylinositol 4-kinase beta,PI4KB,Other kinase,444,train
+CHEMBL2793,Casein kinase I isoform alpha,CSNK1A1,Other kinase,439,train
+CHEMBL4525,Serine/threonine-protein kinase 17A,STK17A,Other kinase,433,train
+CHEMBL3582,Protein kinase C epsilon type,PRKCE,Other kinase,432,train
+CHEMBL2801,Calcium/calmodulin-dependent protein kinase type II subunit delta,CAMK2D,Other kinase,426,train
+CHEMBL5600,MAP/microtubule affinity-regulating kinase 3,MARK3,Other kinase,426,train
+CHEMBL2468,Death-associated protein kinase 3,DAPK3,Other kinase,420,train
+CHEMBL4897,Serine/threonine-protein kinase PLK3,PLK3,Other kinase,390,train
+CHEMBL5469,Protein-tyrosine kinase 2-beta,PTK2B,Other kinase,387,train
+CHEMBL4576,Homeodomain-interacting protein kinase 2,HIPK2,Other kinase,380,train
+CHEMBL4375,SRSF protein kinase 1,SRPK1,Other kinase,379,train
+CHEMBL2938,Protein kinase C gamma type,PRKCG,Other kinase,367,train
+CHEMBL1293257,Galactokinase,GALK1,Other kinase,366,train
+CHEMBL3906,Ribosomal protein S6 kinase alpha-2,RPS6KA2,Other kinase,350,train
+CHEMBL4516,Serine/threonine-protein kinase MRCK alpha,CDC42BPA,Other kinase,341,train
+CHEMBL3831,Serine/threonine-protein kinase MARK2,MARK2,Other kinase,338,train
+CHEMBL4070,Casein kinase II subunit alpha',CSNK2A2,Other kinase,333,train
+CHEMBL3385,Mitogen-activated protein kinase 3,MAPK3,Other kinase,330,train
+CHEMBL4226,Dual specificity protein kinase CLK3,CLK3,Other kinase,330,train
+CHEMBL4246,Tyrosine-protein kinase Tec,TEC,Other kinase,330,train
+CHEMBL6167,Serine/threonine-protein kinase LATS1,LATS1,Other kinase,321,train
+CHEMBL4223,Tyrosine-protein kinase FRK,FRK,Other kinase,317,train
+CHEMBL1075115,Dual specificity tyrosine-phosphorylation-regulated kinase 4,DYRK4,Other kinase,315,train
+CHEMBL4601,Protein-tyrosine kinase 6,PTK6,Other kinase,314,train
+CHEMBL5678,G protein-coupled receptor kinase 5,GRK5,Other kinase,311,train
+CHEMBL5932,LIM domain kinase 2,LIMK2,Other kinase,305,train
+CHEMBL2803,Tyrosine-protein kinase ZAP-70,ZAP70,Other kinase,291,train
+CHEMBL5776,Mitogen-activated protein kinase kinase kinase 7,MAP3K7,Other kinase,287,train
+CHEMBL5818,cAMP-dependent protein kinase catalytic subunit PRKX,PRKX,Other kinase,285,train
+CHEMBL2543,Casein kinase I isoform gamma-2,CSNK1G2,Other kinase,284,train
+CHEMBL3438,Protein kinase C zeta type,PRKCZ,Other kinase,282,train
+CHEMBL5855,Serine/threonine-protein kinase Nek1,NEK1,Other kinase,277,train
+CHEMBL3023,Sphingosine kinase 2,SPHK2,Other kinase,272,train
+CHEMBL1795199,Receptor-interacting serine/threonine-protein kinase 3,RIPK3,Other kinase,269,train
+CHEMBL3961,Mitogen-activated protein kinase 11,MAPK11,Other kinase,268,train
+CHEMBL3829,Calcium/calmodulin-dependent protein kinase type II subunit gamma,CAMK2G,Other kinase,259,train
+CHEMBL5073,Calcium/calmodulin-dependent protein kinase type 1D,CAMK1D,Other kinase,256,train
+CHEMBL4598,Serine/threonine-protein kinase 4,STK4,Other kinase,247,train
+CHEMBL5052,Serine/threonine-protein kinase MRCK beta,CDC42BPB,Other kinase,246,train
+CHEMBL3616,Protein kinase C eta type,PRKCH,Other kinase,243,train
+CHEMBL5260,Serine/threonine-protein kinase TNNI3K,TNNI3K,Other kinase,241,train
+CHEMBL2073,Tyrosine-protein kinase Yes,YES1,Other kinase,237,train
+CHEMBL5650,Serine/threonine-protein kinase BRSK1,BRSK1,Other kinase,237,train
+CHEMBL3982,Tyrosine-protein kinase Fer,FER,Other kinase,236,train
+CHEMBL4105942,Diacylglycerol kinase zeta,DGKZ,Other kinase,233,train
+CHEMBL2964,Dual specificity mitogen-activated protein kinase kinase 2,MAP2K2,Other kinase,228,train
+CHEMBL3117,Choline kinase alpha,CHKA,Other kinase,228,train
+CHEMBL4121,Calcium/calmodulin-dependent protein kinase type II subunit beta,CAMK2B,Other kinase,228,train
+CHEMBL4899,Mitogen-activated protein kinase kinase kinase 8,MAP3K8,Other kinase,222,train
+CHEMBL5554,Phosphatidylinositol 4-phosphate 3-kinase C2 domain-containing subunit beta,PIK3C2B,Other kinase,222,train
+CHEMBL1075163,Serine/threonine-protein kinase haspin,HASPIN,Other kinase,220,train
+CHEMBL2939,Mitogen-activated protein kinase 13,MAPK13,Other kinase,217,train
+CHEMBL6006,Serine/threonine-protein kinase ULK1,ULK1,Other kinase,215,train
+CHEMBL2708,Mitogen-activated protein kinase kinase kinase 11,MAP3K11,Other kinase,214,train
+CHEMBL2553,Ribosomal protein S6 kinase alpha-1,RPS6KA1,Other kinase,209,train
+CHEMBL5699,Serine/threonine-protein kinase SIK2,SIK2,Other kinase,199,train
+CHEMBL5819,Serine/threonine-protein kinase Nek4,NEK4,Other kinase,198,train
+CHEMBL5938,Serine/threonine-protein kinase PLK2,PLK2,Other kinase,191,train
+CHEMBL5084,Casein kinase I isoform gamma-3,CSNK1G3,Other kinase,187,train
+CHEMBL4273,cGMP-dependent protein kinase 1,PRKG1,Other kinase,183,train
+CHEMBL5121,Mitogen-activated protein kinase 6,MAPK6,Other kinase,183,train
+CHEMBL1795194,Phosphatidylinositol 5-phosphate 4-kinase type-2 alpha,PIP4K2A,Other kinase,181,train
+CHEMBL5247,Integrin-linked protein kinase,ILK,Other kinase,180,train
+CHEMBL1770034,Phosphatidylinositol 5-phosphate 4-kinase type-2 gamma,PIP4K2C,Other kinase,179,train
+CHEMBL2349,"Phosphorylase b kinase gamma catalytic chain, liver/testis isoform",PHKG2,Other kinase,176,train
+CHEMBL5334,Non-receptor tyrosine-protein kinase TNK1,TNK1,Other kinase,176,train
+CHEMBL5332,Mitogen-activated protein kinase 7,MAPK7,Other kinase,171,train
+CHEMBL3863,Serine/threonine-protein kinase D1,PRKD1,Other kinase,168,train
+CHEMBL5284,Calcium/calmodulin-dependent protein kinase kinase 2,CAMKK2,Other kinase,166,train
+CHEMBL4523418,Inositol hexakisphosphate kinase 1,IP6K1,Other kinase,161,train
+CHEMBL6144,G protein-coupled receptor kinase 6,GRK6,Other kinase,161,train
+CHEMBL2634,Tyrosine-protein kinase CSK,CSK,Other kinase,156,train
+CHEMBL3559692,Cyclin-dependent kinase 12,CDK12,Other kinase,153,train
+CHEMBL2897,Dual specificity mitogen-activated protein kinase kinase 4,MAP2K4,Other kinase,151,train
+CHEMBL4014,Tyrosine-protein kinase ABL2,ABL2,Other kinase,149,train
+CHEMBL3384,Serine/threonine-protein kinase N1,PKN1,Other kinase,147,train
+CHEMBL6149,Serine/threonine-protein kinase SIK3,SIK3,Other kinase,145,train
+CHEMBL5432,Mitogen-activated protein kinase kinase kinase kinase 3,MAP4K3,Other kinase,141,train
+CHEMBL5026,Eukaryotic elongation factor 2 kinase,EEF2K,Other kinase,139,train
+CHEMBL4522,BMP-2-inducible protein kinase,BMP2K,Other kinase,137,train
+CHEMBL3984,Membrane-associated tyrosine- and threonine-specific cdc2-inhibitory kinase,PKMYT1,Other kinase,136,train
+CHEMBL1075189,Pyruvate kinase PKM,PKM,Other kinase,127,train
+CHEMBL5579,Citron Rho-interacting kinase,CIT,Other kinase,126,train
+CHEMBL6082,Serine/threonine-protein kinase SIK1,SIK1,Other kinase,124,train
+CHEMBL4105787,Diacylglycerol kinase alpha,DGKA,Other kinase,123,train
+CHEMBL4948,Dual specificity mitogen-activated protein kinase kinase 5,MAP2K5,Other kinase,114,train
+CHEMBL5701,Serine/threonine-protein kinase TAO3,TAOK3,Other kinase,113,train
+CHEMBL3935,Aurora kinase C,AURKC,Other kinase,112,train
+CHEMBL2872,Mitogen-activated protein kinase kinase kinase 9,MAP3K9,Other kinase,110,train
+CHEMBL2493,Calcium/calmodulin-dependent protein kinase type 1,CAMK1,Other kinase,105,train
+CHEMBL5754,MAP/microtubule affinity-regulating kinase 4,MARK4,Other kinase,105,train
+CHEMBL4523434,Bifunctional polynucleotide phosphatase/kinase,PNKP,Other kinase,101,train
+CHEMBL5404,Serine/threonine-protein kinase tousled-like 2,TLK2,Other kinase,101,train
+CHEMBL3094,MAP kinase-activated protein kinase 5,MAPKAPK5,Other kinase,100,train
+CHEMBL3667,Phosphatidylinositol 4-kinase alpha,PI4KA,Other kinase,99,train
+CHEMBL1908383,Phosphatidylinositol 4-phosphate 5-kinase type-1 gamma,PIP5K1C,Other kinase,98,train
+CHEMBL2886,Phosphoglycerate kinase 1,PGK1,Other kinase,95,train
+CHEMBL3530,Dual specificity mitogen-activated protein kinase kinase 7,MAP2K7,Other kinase,94,train
+CHEMBL5784,NUAK family SNF1-like kinase 1,NUAK1,Other kinase,93,train
+CHEMBL5703,Tyrosine-protein kinase Srms,SRMS,Other kinase,91,train
+CHEMBL6003,Testis-specific serine/threonine-protein kinase 1,TSSK1B,Other kinase,91,train
+CHEMBL3938,Serine/threonine-protein kinase 16,STK16,Other kinase,86,train
+CHEMBL4141,"[Pyruvate dehydrogenase (acetyl-transferring)] kinase isozyme 4, mitochondrial",PDK4,Other kinase,83,train
+CHEMBL5427,Homeodomain-interacting protein kinase 1,HIPK1,Other kinase,82,train
+CHEMBL6002,Cyclin-dependent kinase 19,CDK19,Other kinase,79,train
+CHEMBL2883,"Thymidine kinase, cytosolic",TK1,Other kinase,77,train
+CHEMBL1075102,Phosphatidylinositol 4-phosphate 3-kinase C2 domain-containing subunit alpha,PIK3C2A,Other kinase,72,train
+CHEMBL5838,Receptor tyrosine-protein kinase erbB-3,ERBB3,Other kinase,72,train
+CHEMBL1938222,1-phosphatidylinositol 3-phosphate 5-kinase,PIKFYVE,Other kinase,71,train
+CHEMBL2558,Death-associated protein kinase 1,DAPK1,Other kinase,71,train
+CHEMBL6191,Mitogen-activated protein kinase kinase kinase 19,MAP3K19,Other kinase,71,train
+CHEMBL5081,Interleukin-1 receptor-associated kinase 3,IRAK3,Other kinase,70,train
+CHEMBL6000,Serine/threonine-protein kinase RIO2,RIOK2,Other kinase,70,train
+CHEMBL5941,Serine/threonine-protein kinase 26,STK26,Other kinase,68,train
+CHEMBL4597,Cyclin-dependent kinase 16,CDK16,Other kinase,67,train
+CHEMBL4670,MAP kinase-activated protein kinase 3,MAPKAPK3,Other kinase,66,train
+CHEMBL5364,Serine/threonine-protein kinase NLK,NLK,Other kinase,66,train
+CHEMBL5416,Cyclin-dependent kinase 11A,CDK11A,Other kinase,65,train
+CHEMBL4577,Homeodomain-interacting protein kinase 3,HIPK3,Other kinase,62,train
+CHEMBL4523488,Inositol hexakisphosphate kinase 2,IP6K2,Other kinase,61,train
+CHEMBL5667,Phosphatidylinositol 5-phosphate 4-kinase type-2 beta,PIP4K2B,Other kinase,59,train
+CHEMBL4175,Megakaryocyte-associated tyrosine-protein kinase,MATK,Other kinase,58,train
+CHEMBL1075195,Serine/threonine-protein kinase TAO2,TAOK2,Other kinase,57,train
+CHEMBL6029,Eukaryotic translation initiation factor 2-alpha kinase 1,EIF2AK1,Other kinase,57,train
+CHEMBL5698,NUAK family SNF1-like kinase 2,NUAK2,Other kinase,56,train
+CHEMBL5914,Mitogen-activated protein kinase kinase kinase 2,MAP3K2,Other kinase,56,train
+CHEMBL2873,Mitogen-activated protein kinase kinase kinase 10,MAP3K10,Other kinase,55,train
+CHEMBL5047,Serine/threonine-protein kinase ULK3,ULK3,Other kinase,54,train
+CHEMBL3337327,Tau-tubulin kinase 2,TTBK2,Other kinase,53,train
+CHEMBL5256,Calcium/calmodulin-dependent protein kinase kinase 1,CAMKK1,Other kinase,52,train
+CHEMBL5426,Myosin light chain kinase family member 4,MYLK4,Other kinase,52,train
+CHEMBL5668,SRSF protein kinase 2,SRPK2,Other kinase,52,train
+CHEMBL5435,Serine/threonine-protein kinase ULK2,ULK2,Other kinase,51,train
+CHEMBL4849,Serine/threonine-protein kinase Nek7,NEK7,Other kinase,50,train
+CHEMBL5198,Mitogen-activated protein kinase 15,MAPK15,Other kinase,50,train
+CHEMBL1163120,Phosphatidylinositol 3-kinase C2 domain-containing subunit gamma,PIK3C2G,Other kinase,49,train
+CHEMBL1163124,Mitogen-activated protein kinase kinase kinase 13,MAP3K13,Other kinase,49,train
+CHEMBL4442,Cyclin-dependent kinase 3,CDK3,Other kinase,49,train
+CHEMBL4523431,Inositol hexakisphosphate kinase 3,IP6K3,Other kinase,49,train
+CHEMBL2116,5'-AMP-activated protein kinase catalytic subunit alpha-2,PRKAA2,Other kinase,48,train
+CHEMBL4580,"Thymidine kinase 2, mitochondrial",TK2,Other kinase,48,train
+CHEMBL3956,Mitogen-activated protein kinase kinase kinase 1,MAP3K1,Other kinase,47,train
+CHEMBL5607,Rhodopsin kinase GRK1,GRK1,Other kinase,47,train
+CHEMBL6014,Testis-specific serine/threonine-protein kinase 2,TSSK2,Other kinase,47,train
+CHEMBL1163108,STE20/SPS1-related proline-alanine-rich protein kinase,STK39,Other kinase,45,train
+CHEMBL4295983,MAPK/MAK/MRK overlapping kinase,MOK,Other kinase,44,train
+CHEMBL5970,Mitogen-activated protein kinase kinase kinase 3,MAP3K3,Other kinase,44,train
+CHEMBL2160,Nucleoside diphosphate kinase B,NME2,Other kinase,43,train
+CHEMBL2171,Dual specificity mitogen-activated protein kinase kinase 6,MAP2K6,Other kinase,43,train
+CHEMBL5790,Cyclin-dependent kinase 17,CDK17,Other kinase,43,train
+CHEMBL5082,Serine/threonine-protein kinase 24,STK24,Other kinase,41,train
+CHEMBL3123,Death-associated protein kinase 2,DAPK2,Other kinase,40,train
+CHEMBL2777,"Myosin light chain kinase 2, skeletal/cardiac muscle",MYLK2,Other kinase,39,train
+CHEMBL3893,"[Pyruvate dehydrogenase (acetyl-transferring)] kinase isozyme 3, mitochondrial",PDK3,Other kinase,39,train
+CHEMBL5605,TGF-beta-activated kinase 1 and MAP3K7-binding protein 1,TAB1,Other kinase,38,train
+CHEMBL5861,G protein-coupled receptor kinase 4,GRK4,Other kinase,38,train
+CHEMBL1075133,Rhodopsin kinase GRK7,GRK7,Other kinase,37,train
+CHEMBL1169596,Serine/threonine-protein kinase A-Raf,ARAF,Other kinase,37,train
+CHEMBL4296242,Connector enhancer of kinase suppressor of ras 1,CNKSR1,Other kinase,37,train
+CHEMBL1163126,Serine/threonine-protein kinase ICK,CILK1,Other kinase,36,train
+CHEMBL2999,Serine/threonine-protein kinase PAK 3,PAK3,Other kinase,35,train
+CHEMBL4004,"Phosphorylase b kinase gamma catalytic chain, skeletal muscle/heart isoform",PHKG1,Other kinase,35,train
+CHEMBL1163123,Mitogen-activated protein kinase kinase kinase 6,MAP3K6,Other kinase,34,train
+CHEMBL3421524,"6-phosphofructo-2-kinase/fructose-2,6-bisphosphatase 1",PFKFB1,Other kinase,34,train
+CHEMBL5320,Myotonin-protein kinase,DMPK,Other kinase,34,train
+CHEMBL5415,SRSF protein kinase 3,SRPK3,Other kinase,34,train
+CHEMBL5940,Serine/threonine-protein kinase MARK1,MARK1,Other kinase,34,train
+CHEMBL5969,Phosphatidylinositol 4-phosphate 5-kinase type-1 alpha,PIP5K1A,Other kinase,34,train
+CHEMBL6123,Serine/threonine-protein kinase DCLK3,DCLK3,Other kinase,34,train
+CHEMBL2494,Calcium/calmodulin-dependent protein kinase type IV,CAMK4,Other kinase,32,train
+CHEMBL5257,Serine/threonine-protein kinase Nek9,NEK9,Other kinase,32,train
+CHEMBL5550,"Atypical kinase COQ8A, mitochondrial",COQ8A,Other kinase,32,train
+CHEMBL2783,Cyclin-dependent kinase 5 activator 1,CDK5R1,Other kinase,31,train
+CHEMBL5552,Serine/threonine-protein kinase 25,STK25,Other kinase,31,train
+CHEMBL5728,Cyclin-dependent kinase-like 2,CDKL2,Other kinase,31,train
+CHEMBL6054,PAS domain-containing serine/threonine-protein kinase,PASK,Other kinase,31,train
+CHEMBL3421525,"6-phosphofructo-2-kinase/fructose-2,6-bisphosphatase 2",PFKFB2,Other kinase,30,train
+CHEMBL4524,Serine/threonine-protein kinase PAK 5,PAK5,Other kinase,30,train
+CHEMBL5975,Serine/threonine-protein kinase RIO1,RIOK1,Other kinase,28,train
+CHEMBL2393,5'-AMP-activated protein kinase subunit gamma-1,PRKAG1,Other kinase,27,train
+CHEMBL2453,5'-AMP-activated protein kinase subunit gamma-2,PRKAG2,Other kinase,27,train
+CHEMBL2918,cAMP-dependent protein kinase catalytic subunit beta,PRKACB,Other kinase,27,train
+CHEMBL4312,Serine/threonine-protein kinase 36,STK36,Other kinase,27,train
+CHEMBL5659,Serine/threonine-protein kinase RIO3,RIOK3,Other kinase,26,train
+CHEMBL5547,Ankyrin repeat and protein kinase domain-containing protein 1,ANKK1,Other kinase,25,train
+CHEMBL3847,5'-AMP-activated protein kinase subunit beta-1,PRKAB1,Other kinase,24,train
+CHEMBL5606,Serine/threonine-protein kinase STK11,STK11,Other kinase,24,train
+CHEMBL5651,Serine/threonine-protein kinase 35,STK35,Other kinase,24,train
+CHEMBL1795195,Serine/threonine-protein kinase SMG1,SMG1,Other kinase,23,train
+CHEMBL5316,Cyclin-dependent kinase 18,CDK18,Other kinase,23,train
+CHEMBL6083,Receptor-interacting serine/threonine-protein kinase 4,RIPK4,Other kinase,23,train
+CHEMBL6186,Serine/threonine-protein kinase Sgk3,SGK3,Other kinase,23,train
+CHEMBL1908386,Dual serine/threonine and tyrosine protein kinase,DSTYK,Other kinase,22,train
+CHEMBL4574,Serine/threonine-protein kinase BRSK2,BRSK2,Other kinase,22,train
+CHEMBL1163112,Cyclin-dependent kinase-like 5,CDKL5,Other kinase,21,train
+CHEMBL1163129,Serine/threonine-protein kinase SBK1,SBK1,Other kinase,21,train
+CHEMBL2911,"Phosphoenolpyruvate carboxykinase, cytosolic [GTP]",PCK1,Other kinase,21,train
+CHEMBL4105885,AarF domain-containing protein kinase 1,ADCK1,Other kinase,21,train
+CHEMBL5578,Cyclin-dependent kinase 2-associated protein 1,CDK2AP1,Other kinase,21,train
+CHEMBL1075173,Serine/threonine-protein kinase WNK1,WNK1,Other kinase,20,train
+CHEMBL5044,Serine/threonine-protein kinase Nek5,NEK5,Other kinase,20,train
+CHEMBL5388,Serine/threonine-protein kinase tousled-like 1,TLK1,Other kinase,20,train
+CHEMBL5808,Cyclin-dependent kinase 11B,CDK11B,Other kinase,20,train
+CHEMBL1795165,Hormonally up-regulated neu tumor-associated kinase,HUNK,Other kinase,19,train
+CHEMBL3721311,"6-phosphofructo-2-kinase/fructose-2,6-bisphosphatase 4",PFKFB4,Other kinase,18,train
+CHEMBL6177,NAD kinase,NADK,Other kinase,18,train
+CHEMBL3112385,Choline/ethanolamine kinase,CHKB,Other kinase,17,train
+CHEMBL3542,Serine/threonine-protein kinase NIM1,NIM1K,Other kinase,17,train
+CHEMBL4879437,Inactive serine/threonine-protein kinase 19,WHR1,Other kinase,17,train
+CHEMBL5116,Uncharacterized serine/threonine-protein kinase SBK3,SBK3,Other kinase,17,train
+CHEMBL1163104,Serine/threonine-protein kinase OSR1,OXSR1,Other kinase,16,train
+CHEMBL1908382,Serine/threonine-protein kinase PRP4 homolog,PRP4K,Other kinase,16,train
+CHEMBL5519,Serine/threonine-protein kinase DCLK2,DCLK2,Other kinase,16,train
+CHEMBL5753,"Atypical kinase COQ8B, mitochondrial",COQ8B,Other kinase,16,train
+CHEMBL5856,Cyclin-dependent kinase 15,CDK15,Other kinase,16,train
+CHEMBL5912,Serine/threonine-protein kinase 32B,STK32B,Other kinase,16,train
+CHEMBL6150,Serine/threonine-protein kinase 32A,STK32A,Other kinase,16,train
+CHEMBL1163117,Cyclin-dependent kinase-like 3,CDKL3,Other kinase,15,train
+CHEMBL1163128,Microtubule-associated serine/threonine-protein kinase 1,MAST1,Other kinase,15,train
+CHEMBL1938217,Mixed lineage kinase domain-like protein,MLKL,Other kinase,15,train
+CHEMBL3407326,Pantothenate kinase 1,PANK1,Other kinase,15,train
+CHEMBL1075155,Serine/threonine-protein kinase 38,STK38,Other kinase,14,train
+CHEMBL4851,Serine/threonine-protein kinase 38-like,STK38L,Other kinase,14,train
+CHEMBL2069163,Dual specificity testis-specific protein kinase 2,TESK2,Other kinase,13,train
+CHEMBL5021,Cyclin-dependent kinase inhibitor 1,CDKN1A,Other kinase,13,train
+CHEMBL5638,Serine/threonine-protein kinase Nek11,NEK11,Other kinase,13,train
+CHEMBL1649059,Serine/threonine-protein kinase VRK2,VRK2,Other kinase,12,train
+CHEMBL2743,cAMP-dependent protein kinase catalytic subunit gamma,PRKACG,Other kinase,12,train
+CHEMBL4388,Thymidylate kinase,DTYMK,Other kinase,12,train
+CHEMBL1075181,Pyridoxal kinase,PDXK,Other kinase,11,train
+CHEMBL4523432,Serine/threonine-protein kinase LMTK3,LMTK3,Other kinase,11,train
+CHEMBL5759,Mitogen-activated protein kinase 4,MAPK4,Other kinase,11,train
+CHEMBL1163106,Serine/threonine-protein kinase MAK,MAK,Other kinase,10,train
+CHEMBL2469,Uridine-cytidine kinase 2,UCK2,Other kinase,10,train
+CHEMBL5212,"Membrane-associated guanylate kinase, WW and PDZ domain-containing protein 3",MAGI3,Other kinase,10,train
+CHEMBL1163127,Mitogen-activated protein kinase kinase kinase 15,MAP3K15,Other kinase,9,train
+CHEMBL1795198,STE20-related kinase adapter protein alpha,STRADA,Other kinase,9,train
+CHEMBL2251,Phosphatidylinositol 4-kinase type 2-alpha,PI4K2A,Other kinase,9,train
+CHEMBL3627592,Calcium/calmodulin-dependent protein kinase type 1B,PNCK,Other kinase,9,train
+CHEMBL4105932,Serine/threonine-protein kinase/endoribonuclease IRE2,ERN2,Other kinase,8,train
+CHEMBL4523401,Inositol polyphosphate multikinase,IPMK,Other kinase,8,train
+CHEMBL3627581,Serine/threonine-protein kinase N3,PKN3,Other kinase,7,train
+CHEMBL5405,Serine/threonine-protein kinase 32C,STK32C,Other kinase,7,train
+CHEMBL3414416,Testis-specific serine/threonine-protein kinase 3,TSSK3,Other kinase,6,train
+CHEMBL5789,Cyclin-dependent kinase-like 1,CDKL1,Other kinase,6,train
+CHEMBL6055,Serine/threonine-protein kinase WNK3,WNK3,Other kinase,5,train
+CHEMBL2117,5'-AMP-activated protein kinase subunit beta-2,PRKAB2,Other kinase,4,train
+CHEMBL2221,cAMP-dependent protein kinase type II-alpha regulatory subunit,PRKAR2A,Other kinase,4,train
+CHEMBL4802064,Phosphatidylinositol 4-phosphate 5-kinase type-1 beta,PIP5K1B,Other kinase,4,train
+CHEMBL1075157,Diacylglycerol kinase gamma,DGKG,Other kinase,3,train
+CHEMBL2417353,Serine/threonine-protein kinase Nek8,NEK8,Other kinase,3,train
+CHEMBL2972,"ATP-dependent 6-phosphofructokinase, platelet type",PFKP,Other kinase,3,train
+CHEMBL3337330,"Serine/threonine-protein kinase PINK1, mitochondrial",PINK1,Other kinase,3,train
+CHEMBL4105867,Bifunctional coenzyme A synthase,COASY,Other kinase,3,train
+CHEMBL5465280,Diacylglycerol kinase iota,DGKI,Other kinase,3,train
+CHEMBL1250412,Transient receptor potential cation channel subfamily M member 7,TRPM7,Other kinase,2,train
+CHEMBL2159,Nucleoside diphosphate kinase A,NME1,Other kinase,2,train
+CHEMBL3108655,Serine/threonine-protein kinase Nek10,NEK10,Other kinase,2,train
+CHEMBL3627585,Inactive tyrosine-protein kinase PEAK1,PEAK1,Other kinase,2,train
+CHEMBL4105755,Diacylglycerol kinase beta,DGKB,Other kinase,2,train
+CHEMBL4105886,Uncharacterized aarF domain-containing protein kinase 5,ADCK5,Other kinase,2,train
+CHEMBL4938,"Adenylate kinase 2, mitochondrial",AK2,Other kinase,2,train
+CHEMBL5053,CDK-activating kinase assembly factor MAT1,MNAT1,Other kinase,2,train
+CHEMBL5681,UMP-CMP kinase,CMPK1,Other kinase,2,train
+CHEMBL5724680,Fructosamine-3-kinase,FN3K,Other kinase,2,train
+CHEMBL6067330,Serine-threonine kinase receptor-associated protein,STRAP,Other kinase,2,train
+CHEMBL1818,IkappaB kinase complex-associated protein,ELP1,Other kinase,1,train
+CHEMBL1938215,Kinase suppressor of Ras 1,KSR1,Other kinase,1,train
+CHEMBL2300,Glycerol kinase,GK,Other kinase,1,train
+CHEMBL2417354,"Acylglycerol kinase, mitochondrial",AGK,Other kinase,1,train
+CHEMBL3407327,"Pantothenate kinase 2, mitochondrial",PANK2,Other kinase,1,train
+CHEMBL3559690,Cyclin-dependent kinase 20,CDK20,Other kinase,1,train
+CHEMBL3627582,Testis-specific serine/threonine-protein kinase 6,TSSK6,Other kinase,1,train
+CHEMBL3627583,Kinase suppressor of Ras 2,KSR2,Other kinase,1,train
+CHEMBL3627584,Mitogen-activated protein kinase kinase kinase 21,MAP3K21,Other kinase,1,train
+CHEMBL4105759,Interleukin-1 receptor-associated kinase-like 2,IRAK2,Other kinase,1,train
+CHEMBL4105936,Putative nucleoside diphosphate kinase,NME2P1,Other kinase,1,train
+CHEMBL4295784,Delta-1-pyrroline-5-carboxylate synthase,ALDH18A1,Other kinase,1,train
+CHEMBL4523504,Bifunctional UDP-N-acetylglucosamine 2-epimerase/N-acetylmannosamine kinase,GNE,Other kinase,1,train
+CHEMBL4879492,Extracellular serine/threonine protein kinase FAM20C,FAM20C,Other kinase,1,train
+CHEMBL5465316,Diacylglycerol kinase kappa,DGKK,Other kinase,1,train
+CHEMBL6010,Cyclin-dependent kinase 2-associated protein 2,CDK2AP2,Other kinase,1,train
+CHEMBL6066381,Cyclin-dependent kinases regulatory subunit 2,CKS2,Other kinase,1,train
+CHEMBL6066386,"FAST kinase domain-containing protein 1, mitochondrial",FASTKD1,Other kinase,1,train
+CHEMBL6066961,"Creatine kinase U-type, mitochondrial",CKMT1A,Other kinase,1,train
+CHEMBL6067042,Bifunctional 3'-phosphoadenosine 5'-phosphosulfate synthase 1,PAPSS1,Other kinase,1,train
+CHEMBL6067265,FAST kinase domain-containing protein 4,TBRG4,Other kinase,1,train
+CHEMBL6067300,Serine/threonine-protein kinase LMTK2,LMTK2,Serine/Threonine kinase,1,train
+CHEMBL279,Vascular endothelial growth factor receptor 2,KDR,Tyrosine kinase,10620,train
+CHEMBL2815,High affinity nerve growth factor receptor,NTRK1,Tyrosine kinase,4860,train
+CHEMBL3717,Hepatocyte growth factor receptor,MET,Tyrosine kinase,4815,train
+CHEMBL2041,Proto-oncogene tyrosine-protein kinase receptor Ret,RET,Tyrosine kinase,4349,train
+CHEMBL1936,Mast/stem cell growth factor receptor Kit,KIT,Tyrosine kinase,3148,train
+CHEMBL1824,Receptor tyrosine-protein kinase erbB-2,ERBB2,Tyrosine kinase,2553,train
+CHEMBL4247,ALK tyrosine kinase receptor,ALK,Tyrosine kinase,2521,train
+CHEMBL5331,Tyrosine-protein kinase Mer,MERTK,Tyrosine kinase,2151,train
+CHEMBL5314,Tyrosine-protein kinase receptor TYRO3,TYRO3,Tyrosine kinase,1744,train
+CHEMBL5319,Epithelial discoidin domain-containing receptor 1,DDR1,Tyrosine kinase,1650,train
+CHEMBL1981,Insulin receptor,INSR,Tyrosine kinase,934,train
+CHEMBL5147,Ephrin type-B receptor 4,EPHB4,Tyrosine kinase,918,train
+CHEMBL4128,Angiopoietin-1 receptor,TEK,Tyrosine kinase,866,train
+CHEMBL1955,Vascular endothelial growth factor receptor 3,FLT4,Tyrosine kinase,825,train
+CHEMBL4898,BDNF/NT-3 growth factors receptor,NTRK2,Tyrosine kinase,816,train
+CHEMBL2068,Ephrin type-A receptor 2,EPHA2,Tyrosine kinase,720,train
+CHEMBL5608,NT-3 growth factor receptor,NTRK3,Tyrosine kinase,625,train
+CHEMBL5122,Discoidin domain-containing receptor 2,DDR2,Tyrosine kinase,380,train
+CHEMBL5568,Proto-oncogene tyrosine-protein kinase ROS,ROS1,Tyrosine kinase,372,train
+CHEMBL3009,Receptor tyrosine-protein kinase erbB-4,ERBB4,Tyrosine kinase,345,train
+CHEMBL2689,Macrophage-stimulating protein receptor,MST1R,Tyrosine kinase,333,train
+CHEMBL5627,Leukocyte tyrosine kinase receptor,LTK,Tyrosine kinase,259,train
+CHEMBL3988,Ephrin type-A receptor 4,EPHA4,Tyrosine kinase,91,train
+CHEMBL5810,Ephrin type-A receptor 1,EPHA1,Tyrosine kinase,74,train
+CHEMBL5274,Tyrosine-protein kinase receptor Tie-1,TIE1,Tyrosine kinase,52,train
+CHEMBL5483,Insulin receptor-related protein,INSRR,Tyrosine kinase,30,train
+CHEMBL4665585,Inactive tyrosine-protein kinase transmembrane receptor ROR1,ROR1,Tyrosine kinase,22,train
+CHEMBL2148,Tyrosine-protein kinase JAK3,JAK3,Other kinase,7330,val
+CHEMBL3130,"Phosphatidylinositol 4,5-bisphosphate 3-kinase catalytic subunit delta isoform",PIK3CD,Other kinase,7142,val
+CHEMBL5145,Serine/threonine-protein kinase B-raf,BRAF,Other kinase,5778,val
+CHEMBL2973,Rho-associated protein kinase 2,ROCK2,Other kinase,5347,val
+CHEMBL2599,Tyrosine-protein kinase SYK,SYK,Other kinase,5263,val
+CHEMBL3267,"Phosphatidylinositol 4,5-bisphosphate 3-kinase catalytic subunit gamma isoform",PIK3CG,Other kinase,3912,val
+CHEMBL5749,Mitogen-activated protein kinase kinase kinase kinase 1,MAP4K1,Other kinase,3098,val
+CHEMBL3231,Rho-associated protein kinase 1,ROCK1,Other kinase,2750,val
+CHEMBL4501,Ribosomal protein S6 kinase beta-1,RPS6KB1,Other kinase,1917,val
+CHEMBL3920,Protein kinase C theta type,PRKCQ,Other kinase,1078,val
+CHEMBL2343,Serine/threonine-protein kinase Sgk1,SGK1,Other kinase,690,val
+CHEMBL4900,Serine/threonine-protein kinase D2,PRKD2,Other kinase,483,val
+CHEMBL3835,Serine/threonine-protein kinase Nek2,NEK2,Other kinase,439,val
+CHEMBL5518,Misshapen-like kinase 1,MINK1,Other kinase,423,val
+CHEMBL4394,Sphingosine kinase 1,SPHK1,Other kinase,386,val
+CHEMBL4045,5'-AMP-activated protein kinase catalytic subunit alpha-1,PRKAA1,Other kinase,383,val
+CHEMBL1075167,Homeodomain-interacting protein kinase 4,HIPK4,Other kinase,342,val
+CHEMBL3886,Mitogen-activated protein kinase kinase kinase 20,MAP3K20,Other kinase,317,val
+CHEMBL3834,Cytoplasmic tyrosine-protein kinase BMX,BMX,Other kinase,316,val
+CHEMBL4896,Lymphokine-activated killer T-cell-originated protein kinase,PBK,Other kinase,276,val
+CHEMBL4237,Ribosomal protein S6 kinase alpha-5,RPS6KA5,Other kinase,267,val
+CHEMBL4674,Mitogen-activated protein kinase 12,MAPK12,Other kinase,252,val
+CHEMBL3981,Serine/threonine-protein kinase 10,STK10,Other kinase,185,val
+CHEMBL2428,"Myosin light chain kinase, smooth muscle",MYLK,Other kinase,144,val
+CHEMBL4147,Calcium/calmodulin-dependent protein kinase type II subunit alpha,CAMK2A,Other kinase,144,val
+CHEMBL5785,"Interferon-induced, double-stranded RNA-activated protein kinase",EIF2AK2,Other kinase,133,val
+CHEMBL5683,Serine/threonine-protein kinase DCLK1,DCLK1,Other kinase,114,val
+CHEMBL1795192,Cyclin-dependent kinase 13,CDK13,Other kinase,101,val
+CHEMBL3407328,Pantothenate kinase 3,PANK3,Other kinase,83,val
+CHEMBL3125,Ribosomal protein S6 kinase alpha-4,RPS6KA4,Other kinase,81,val
+CHEMBL6005,Serine/threonine-protein kinase 33,STK33,Other kinase,66,val
+CHEMBL4487,Serine/threonine-protein kinase PAK 2,PAK2,Other kinase,48,val
+CHEMBL1075126,Pyruvate kinase PKLR,PKLR,Other kinase,36,val
+CHEMBL2109,Dual specificity mitogen-activated protein kinase kinase 3,MAP2K3,Other kinase,35,val
+CHEMBL4853,Mitogen-activated protein kinase kinase kinase 4,MAP3K4,Other kinase,29,val
+CHEMBL5258,Calcium/calmodulin-dependent protein kinase type 1G,CAMK1G,Other kinase,26,val
+CHEMBL5679,Serine/threonine-protein kinase Nek3,NEK3,Other kinase,25,val
+CHEMBL5615,Serine/threonine-protein kinase MRCK gamma,CDC42BPG,Other kinase,20,val
+CHEMBL5095,Wee1-like protein kinase 2,WEE2,Other kinase,18,val
+CHEMBL5639,Serine/threonine-protein kinase WNK2,WNK2,Other kinase,5,val
+CHEMBL1795191,Cyclin-dependent kinase 10,CDK10,Other kinase,3,val
+CHEMBL4523108,TANK-binding kinase 1-binding protein 1,TBKBP1,Other kinase,3,val
+CHEMBL3844,Phosphorylase kinase beta subunit,PHKB,Other kinase,2,val
+CHEMBL4523326,Cyclin-dependent kinase-like 4,CDKL4,Other kinase,2,val
+CHEMBL3632457,Cyclin-dependent kinases regulatory subunit 1,CKS1B,Other kinase,1,val
+CHEMBL6067305,Triokinase/FMN cyclase,TKFC,Other kinase,1,val
+CHEMBL203,Epidermal growth factor receptor,EGFR,Tyrosine kinase,10892,val
+CHEMBL4895,Tyrosine-protein kinase receptor UFO,AXL,Tyrosine kinase,2714,val
+CHEMBL1844,Macrophage colony-stimulating factor 1 receptor,CSF1R,Tyrosine kinase,2677,val
+CHEMBL5684,"Muscle, skeletal receptor tyrosine-protein kinase",MUSK,Tyrosine kinase,34,val

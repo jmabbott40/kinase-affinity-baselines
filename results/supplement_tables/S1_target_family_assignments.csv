@@ -1,0 +1,8 @@
+kinase_group,n_targets,n_records,fold
+Other kinase,48,26340,test
+Tyrosine kinase,4,9191,test
+Other kinase,377,205458,train
+Tyrosine kinase,27,46073,train
+Serine/Threonine kinase,1,1,train
+Other kinase,46,49494,val
+Tyrosine kinase,4,16317,val

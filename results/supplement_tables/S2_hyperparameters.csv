@@ -1,0 +1,29 @@
+model,parameter,search_space,selected,criterion
+Random Forest,n_estimators,500 (fixed),500,N/A
+Random Forest,max_depth,None (fixed),None (unlimited),N/A
+Random Forest,max_features,sqrt (fixed),sqrt,N/A
+Random Forest,min_samples_leaf,2 (fixed),2,N/A
+XGBoost,max_depth,"[4, 6, 8, 10, 12]",TBD*,Val RMSE
+XGBoost,learning_rate,"[0.05, 0.1]",TBD*,Val RMSE
+XGBoost,n_estimators,"[300, 500]",TBD*,Val RMSE
+XGBoost,subsample,0.8 (fixed),0.8,N/A
+XGBoost,colsample_bytree,0.8 (fixed),0.8,N/A
+ElasticNet,alpha,"[0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0]",TBD*,Val RMSE
+ElasticNet,l1_ratio,"[0.1, 0.3, 0.5, 0.7, 0.9]",TBD*,Val RMSE
+ElasticNet,max_iter,10000 (fixed),10000,N/A
+MLP (baseline),hidden_layers,"[256, 128] (fixed)","[256, 128]",N/A
+MLP (baseline),n_ensemble,3 (fixed),3,N/A
+MLP (baseline),max_iter,200 (fixed),200,N/A
+ESM-FP MLP,hidden_dims,"[512, 256, 128] (fixed)","[512, 256, 128]",N/A
+ESM-FP MLP,dropout,0.3 (fixed),0.3,N/A
+ESM-FP MLP,learning_rate,0.001 (fixed),0.001,N/A
+ESM-FP MLP,batch_size,1024 (fixed),1024,N/A
+ESM-FP MLP,max_epochs,100 (fixed),100,Early stop (patience=10)
+GIN,gnn_layers,3 (fixed),3,N/A
+GIN,hidden_dim,128 (fixed),128,N/A
+GIN,dropout,0.3 (fixed),0.3,N/A
+GIN,learning_rate,0.001 (fixed),0.001,N/A
+Fusion,gnn_layers,3 (fixed),3,N/A
+Fusion,protein_projection_dim,256 (fixed),256,N/A
+Fusion,learning_rate,0.0005 (fixed),0.0005,N/A
+Fusion,max_epochs,100 (fixed),100,Early stop (patience=15)
