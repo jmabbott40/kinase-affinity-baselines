@@ -39,7 +39,7 @@ run_subset() {
     echo "============================================================"
     echo "P0-A: Creating 92-target ESM subset and generating splits"
     echo "============================================================"
-    python -m kinase_affinity.data.subset all --dataset-version v1
+    python -m kinase_affinity.data.subset --dataset-version v1 all
 
     echo ""
     echo "--- Training baselines on ESM-92 subset ---"
