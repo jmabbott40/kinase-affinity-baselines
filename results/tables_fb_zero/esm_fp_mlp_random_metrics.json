@@ -1,0 +1,23 @@
+{
+  "model": "esm_fp_mlp",
+  "split": "random",
+  "training_seed": null,
+  "fallback_strategy": "zero",
+  "output_suffix": "_fb_zero",
+  "train_time_seconds": 170.4,
+  "best_epoch": 30,
+  "n_train": 282299,
+  "n_val": 35287,
+  "n_test": 35288,
+  "test_rmse": 0.7706372422029195,
+  "test_mae": 0.5777558940415263,
+  "test_r2": 0.6338869301242545,
+  "test_pearson_r": 0.7962635798951652,
+  "test_spearman_rho": 0.7799943132740508,
+  "test_auroc": 0.8763847023335678,
+  "test_auprc": 0.9564586091844276,
+  "test_precision_at_100": 1.0,
+  "test_precision_at_500": 0.996,
+  "test_ef_1pct": 1.2894601447943845,
+  "test_ef_5pct": 1.2902120165989295
+}

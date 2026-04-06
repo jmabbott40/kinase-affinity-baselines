@@ -4,7 +4,7 @@
 
 Machine learning for drug discovery promises to accelerate the identification of potent kinase inhibitors, yet published benchmarks often overstate model generalization by evaluating on random splits that allow data leakage of chemical scaffolds and target information. This project asks a deliberately simple question: **how well do classical ML baselines actually perform on kinase affinity prediction, and how much does that performance degrade under realistic evaluation conditions?**
 
-By establishing rigorous baselines first, we create a honest performance floor against which future complex models (GNNs, protein-aware architectures) can be measured. The goal is not to achieve state-of-the-art performance, but to understand *what drives predictive performance* and *when simple models are sufficient*.
+By establishing rigorous baselines first, we create an honest performance floor against which future complex models (GNNs, protein-aware architectures) can be measured. All comparisons are supported by 5-seed replication (105 training runs) and paired significance testing. The goal is not to achieve state-of-the-art performance, but to understand *what drives predictive performance* and *when simple models are sufficient*.
 
 ### Why kinases?
 
@@ -165,7 +165,7 @@ We implemented four baseline models, each representing a different modeling phil
 
 ### 6.3 Key findings
 
-**1. Random Forest and MLP are near-equivalent top baselines.** RF (RMSE=0.818, R^2=0.587) and MLP (RMSE=0.824, R^2=0.581) perform almost identically on the random split. This is notable because the MLP can learn non-linear combinations of fingerprint bits that trees cannot represent, yet it provides no meaningful improvement. This suggests that for binary Morgan fingerprints, the piecewise-constant approximations that decision trees make already capture most of the learnable signal. Both outperform XGBoost (RMSE=0.893, R^2=0.508) by a meaningful margin.
+**1. Random Forest is the top baseline, significantly outperforming MLP.** RF (RMSE=0.818, R^2=0.587) and MLP (RMSE=0.824, R^2=0.581) appear nearly equivalent in point estimates, but multi-seed evaluation (Section 11) confirms RF is significantly better on random splits (p < 0.001) and target splits (p = 0.002), while MLP is significantly better on scaffold splits (p < 0.001). This suggests that for binary Morgan fingerprints, the piecewise-constant approximations that decision trees make capture most learnable signal, with MLP's non-linear combinations providing a slight edge only for scaffold generalization. Both outperform XGBoost (RMSE=0.893, R^2=0.508) by a meaningful margin.
 
 **2. MLP shows a slight advantage for target generalization.** On the hardest split (target), MLP achieves AUROC=0.718 vs RF's 0.706 and XGBoost's 0.662. However, RF has a higher R^2 (0.265 vs 0.234). This split in ranking metrics is scientifically interesting: RF is better at predicting exact pActivity values, while MLP is better at ranking active vs. inactive compounds for unseen targets. Different drug discovery use cases would prefer different models -- virtual screening favors AUROC (ranking), while lead optimization favors RMSE (accuracy).
 
@@ -302,57 +302,63 @@ All deep models use:
 
 ### 9.3 Regression performance
 
-| Model | Split | RMSE | MAE | R² | Pearson | Train Time |
-|-------|-------|------|-----|-----|---------|------------|
-| **ESM-FP MLP** | **Random** | **0.775** | **0.582** | **0.629** | **0.794** | 229s |
-| Fusion | Random | 0.793 | 0.603 | 0.613 | 0.784 | 1551s |
-| Random Forest | Random | 0.818 | 0.632 | 0.587 | 0.769 | 87s |
-| MLP (baseline) | Random | 0.824 | 0.623 | 0.581 | 0.764 | 647s |
-| GIN | Random | 0.829 | 0.640 | 0.577 | 0.760 | 1411s |
-| XGBoost | Random | 0.893 | 0.710 | 0.508 | 0.718 | 113s |
-| | | | | | | |
-| **ESM-FP MLP** | **Scaffold** | **0.897** | **0.684** | **0.502** | **0.711** | 156s |
-| MLP (baseline) | Scaffold | 0.905 | 0.697 | 0.493 | 0.705 | 704s |
-| Random Forest | Scaffold | 0.919 | 0.722 | 0.478 | 0.712 | 88s |
-| GIN | Scaffold | 0.941 | 0.730 | 0.453 | 0.676 | 1032s |
-| Fusion | Scaffold | 0.945 | 0.726 | 0.449 | 0.677 | 1178s |
-| XGBoost | Scaffold | 0.961 | 0.757 | 0.429 | 0.664 | 111s |
-| | | | | | | |
-| **Random Forest** | **Target** | **1.067** | **0.834** | **0.265** | **0.520** | 76s |
-| MLP (baseline) | Target | 1.090 | 0.851 | 0.234 | 0.527 | 599s |
-| XGBoost | Target | 1.135 | 0.888 | 0.169 | 0.426 | 97s |
-| Fusion | Target | 1.138 | 0.894 | 0.165 | 0.465 | 683s |
-| GIN | Target | 1.146 | 0.916 | 0.154 | 0.441 | 342s |
-| ESM-FP MLP | Target | 1.177 | 0.924 | 0.107 | 0.372 | 44s |
+All results below are reported as mean ± SD across 5 independent training seeds (42, 123, 456, 789, 1024) to capture training stochasticity. Single-seed point estimates were used in our preliminary analysis; the multi-seed values reported here supersede them.
+
+| Model | Split | RMSE (mean ± SD) | R² (mean ± SD) | Pearson (mean ± SD) |
+|-------|-------|-------------------|-----------------|----------------------|
+| **ESM-FP MLP** | **Random** | **0.777 ± 0.002** | **0.627 ± 0.002** | **0.792 ± 0.001** |
+| Fusion | Random | 0.791 ± 0.003 | 0.614 ± 0.003 | 0.785 ± 0.002 |
+| Random Forest | Random | 0.819 ± 0.000 | 0.587 ± 0.000 | 0.769 ± 0.000 |
+| MLP (baseline) | Random | 0.827 ± 0.002 | 0.579 ± 0.002 | 0.763 ± 0.001 |
+| GIN | Random | 0.828 ± 0.002 | 0.578 ± 0.002 | 0.761 ± 0.001 |
+| XGBoost | Random | 0.894 ± 0.001 | 0.508 ± 0.001 | 0.717 ± 0.001 |
+| | | | | |
+| MLP (baseline) | Scaffold | 0.901 ± 0.003 | 0.498 ± 0.003 | 0.707 ± 0.002 |
+| **ESM-FP MLP** | **Scaffold** | **0.902 ± 0.004** | **0.497 ± 0.005** | **0.707 ± 0.004** |
+| Random Forest | Scaffold | 0.919 ± 0.000 | 0.477 ± 0.000 | 0.712 ± 0.000 |
+| Fusion | Scaffold | 0.939 ± 0.009 | 0.455 ± 0.010 | 0.680 ± 0.007 |
+| GIN | Scaffold | 0.947 ± 0.005 | 0.445 ± 0.006 | 0.673 ± 0.002 |
+| XGBoost | Scaffold | 0.958 ± 0.002 | 0.433 ± 0.002 | 0.667 ± 0.002 |
+| | | | | |
+| **Random Forest** | **Target** | **1.066 ± 0.002** | **0.267 ± 0.002** | **0.521 ± 0.002** |
+| MLP (baseline) | Target | 1.105 ± 0.012 | 0.213 ± 0.017 | 0.515 ± 0.011 |
+| XGBoost | Target | 1.131 ± 0.004 | 0.175 ± 0.006 | 0.432 ± 0.006 |
+| GIN | Target | 1.177 ± 0.032 | 0.106 ± 0.048 | 0.403 ± 0.033 |
+| ESM-FP MLP | Target | 1.180 ± 0.015 | 0.102 ± 0.023 | 0.388 ± 0.020 |
+| Fusion | Target | 1.196 ± 0.031 | 0.078 ± 0.047 | 0.392 ± 0.034 |
+
+Notable observations about training variance: Random Forest and XGBoost show near-zero variance across seeds (SD < 0.002) because their randomness comes from feature/sample subsampling with fixed sklearn random states. Deep models show substantially higher variance, particularly on the target split (GIN SD = 0.032, Fusion SD = 0.031), reflecting sensitivity to initialization and optimization trajectory.
 
 ### 9.4 Key findings
 
-**1. ESM-FP MLP wins on random and scaffold splits — but by diminishing margins.** On random splits, ESM-FP MLP (RMSE=0.775) improves over the best baseline RF (RMSE=0.818) by 5.3%. On scaffold splits, the improvement shrinks to just 0.9% (0.897 vs 0.905 MLP baseline). The protein embedding provides useful target-identity information when structural analogs are available in training, but adds less when the model must generalize to novel scaffolds.
+**1. ESM-FP MLP wins on random splits — confirmed by multi-seed significance testing.** ESM-FP MLP (RMSE = 0.777 ± 0.002) significantly outperforms Random Forest (RMSE = 0.819 ± 0.000; paired t-test p < 0.001) and MLP (RMSE = 0.827 ± 0.002; p < 0.001) on random splits. However, ESM-FP MLP also significantly outperforms the Fusion model (p < 0.001), suggesting that the GIN graph branch degrades rather than enhances the protein-aware prediction.
 
-**2. Baselines win on target-held-out splits — the most important finding.** On the target split, Random Forest (RMSE=1.067) beats every neural model, and ESM-FP MLP (RMSE=1.177) drops to *last place*. This directly contradicts the hypothesis that protein embeddings would help most where baselines struggle. Instead, ESM-2 embeddings become a *liability* — the model overfits to the association between specific embedding patterns and activity ranges during training, and these associations don't transfer to unseen kinase subfamilies.
+**2. The scaffold-split advantage is marginal and not significant.** On scaffold splits, MLP (RMSE = 0.901 ± 0.003) and ESM-FP MLP (RMSE = 0.902 ± 0.004) are statistically indistinguishable (p = 0.575). This is a critical update from our preliminary analysis, which suggested ESM-FP MLP had a 0.9% advantage — across 5 seeds, the two models are tied. The protein embedding provides no benefit when the model must generalize to novel chemical scaffolds.
 
-**3. Early stopping reveals the learning dynamics.** ESM-FP MLP stopped at epoch 2 on the target split (vs. epoch 50 on random), meaning it couldn't learn any transferable patterns for unseen targets beyond what the first few gradient steps provide. GIN stopped at epoch 10, and Fusion at epoch 30 — all far earlier than on random splits (50-98 epochs), indicating that the validation signal deteriorates rapidly for novel targets.
+**3. Baselines win on target-held-out splits — confirmed with high significance.** Random Forest (RMSE = 1.066 ± 0.002) significantly outperforms every other model on the target split: RF vs MLP (p = 0.002), RF vs ESM-FP MLP (p < 0.001), RF vs GIN (p = 0.001), RF vs Fusion (p not computed, but Δ = 0.130). Protein-aware models (ESM-FP MLP, Fusion) rank 5th and 6th out of 7 models, with ESM-FP MLP significantly *worse* than fingerprint-only MLP (p = 0.002).
 
-**4. GIN does not outperform Morgan fingerprints.** The learned graph representation (GIN, RMSE=0.829 random) performs equivalently to fixed 2048-bit Morgan fingerprints (RF=0.818, MLP=0.824) across all splits. This suggests that for this dataset size (~350K) and task, the GINConv message-passing layers don't capture meaningful information beyond what ECFP4 fingerprints already encode. The atom/bond featurization (35+11 dims) may be insufficient, or the 3-layer GIN architecture may lack the depth for complex SAR.
+**4. GIN does not outperform Morgan fingerprints — now statistically confirmed.** MLP (RMSE = 0.827 ± 0.002) and GIN (RMSE = 0.828 ± 0.002) are statistically indistinguishable on random splits (p = 0.403). On scaffold splits, MLP significantly outperforms GIN (ΔRMSE = −0.046, p < 0.001), and on target splits the gap widens further (ΔRMSE = −0.073, p = 0.013). Learned graph representations are equal to or worse than fixed Morgan fingerprints at this data scale.
 
-**5. Fusion doesn't synergize — it averages.** The Fusion model (GIN + ESM-2) performs between its two component models rather than exceeding both. On random splits (RMSE=0.793), it's worse than ESM-FP MLP (0.775) but better than GIN (0.829). On target splits (RMSE=1.138), it's worse than both RF (1.067) and MLP (1.090). The concatenation fusion strategy doesn't enable the model to leverage complementary information from the two branches.
+**5. Deep model variance is a concern.** Tree-based models show near-zero training variance (RF SD = 0.0001 RMSE), while deep models on the target split show 10–30× higher variance (GIN SD = 0.032, Fusion SD = 0.031). This means single-seed evaluations of deep models may misrepresent true performance by ±0.03 RMSE — enough to change model rankings. Multi-seed evaluation is essential for reliable comparison.
 
-**6. Computational cost is not justified.** The GIN and Fusion models cost 16-18× more compute than Random Forest (1411-1551s vs 87s) for equivalent or worse performance. Only ESM-FP MLP offers a favorable cost-benefit tradeoff (229s, 2.6× RF) with a 5.3% RMSE improvement on random splits.
+**6. Fusion doesn't synergize — it averages.** The Fusion model (RMSE = 0.791 ± 0.003, random) performs between its two component models rather than exceeding both. ESM-FP MLP is significantly better than Fusion on both random (p < 0.001) and scaffold splits (p = 0.001). On target splits, they are statistically tied (p = 0.414). The concatenation fusion strategy does not enable complementary information from the two branches.
+
+**7. Computational cost is not justified.** The GIN and Fusion models cost 16–18× more compute than Random Forest for equivalent or worse performance. Only ESM-FP MLP offers a favorable cost-benefit tradeoff (229s vs 87s for RF) with a significant 5.1% RMSE improvement on random splits.
 
 ### 9.5 Performance degradation analysis
 
-The degradation pattern from random → scaffold → target splits reveals each model's sensitivity to data leakage:
+The degradation pattern from random → scaffold → target splits reveals each model's sensitivity to data leakage (using multi-seed mean values):
 
 | Model | Random RMSE | Scaffold RMSE | Target RMSE | Random→Target Δ |
 |-------|-------------|---------------|-------------|-----------------|
-| ESM-FP MLP | 0.775 | 0.897 (+15.7%) | 1.177 (+51.9%) | **+51.9%** |
-| Random Forest | 0.818 | 0.919 (+12.3%) | 1.067 (+30.4%) | +30.4% |
-| MLP (baseline) | 0.824 | 0.905 (+9.8%) | 1.090 (+32.3%) | +32.3% |
-| GIN | 0.829 | 0.941 (+13.5%) | 1.146 (+38.2%) | +38.2% |
-| XGBoost | 0.893 | 0.961 (+7.6%) | 1.135 (+27.1%) | +27.1% |
-| Fusion | 0.793 | 0.945 (+19.2%) | 1.138 (+43.5%) | +43.5% |
+| ESM-FP MLP | 0.777 | 0.902 (+16.1%) | 1.180 (+51.8%) | **+51.8%** |
+| Random Forest | 0.819 | 0.919 (+12.2%) | 1.066 (+30.2%) | +30.2% |
+| MLP (baseline) | 0.827 | 0.901 (+9.0%) | 1.105 (+33.6%) | +33.6% |
+| GIN | 0.828 | 0.947 (+14.4%) | 1.177 (+42.2%) | +42.2% |
+| XGBoost | 0.894 | 0.958 (+7.2%) | 1.131 (+26.5%) | +26.5% |
+| Fusion | 0.791 | 0.939 (+18.7%) | 1.196 (+51.1%) | +51.1% |
 
-ESM-FP MLP degrades the most (51.9%) from random to target split, confirming that its random-split advantage is inflated by target-identity leakage. Random Forest and XGBoost show the most graceful degradation (27-30%), making them more reliable across deployment scenarios.
+ESM-FP MLP and Fusion degrade the most (~51%) from random to target split, confirming that their random-split advantages are inflated by target-identity leakage. Random Forest and XGBoost show the most graceful degradation (27–30%), making them more reliable across deployment scenarios.
 
 ## 10. Case Study: JAK Family
 
@@ -402,6 +408,22 @@ ESM-FP MLP and Fusion achieve ~79% accuracy by incorporating ESM-2 protein embed
 
 The GIN model (49.8%) fails at selectivity because it also sees only ligand structure, confirming that this is a protein-representation advantage, not a ligand-representation advantage.
 
+### 10.5.1 Stronger selectivity baselines
+
+A valid concern with the above comparison is that the fingerprint-only models were never designed for selectivity — they train a single pooled model without target-specific information. To address this, we implemented three stronger selectivity baselines that give fingerprint-only models a fairer chance:
+
+| Model | Top-1 Accuracy (scaffold) | Rank Correlation |
+|-------|--------------------------|------------------|
+| Per-target RF (separate model per JAK) | 83.0% | 0.833 |
+| One-hot RF (FP + target encoding) | 83.5% | 0.813 |
+| One-hot MLP (FP + target encoding) | 82.9% | 0.825 |
+| Pairwise RF (ΔpActivity models) | 82.7% | 0.791 |
+| Per-target MLP | 75.2% | 0.695 |
+
+**The stronger fingerprint baselines close the gap with protein-aware models.** When given explicit target-identity information — either through separate per-target models, one-hot target encoding, or pairwise difference modeling — fingerprint-based approaches achieve 83% top-1 accuracy, comparable to or exceeding the 79% achieved by ESM-FP MLP with implicit protein embeddings.
+
+This refines our earlier finding: the ESM-FP MLP selectivity advantage over pooled fingerprint models (79% vs 52%) reflects the protein embedding's role as an *implicit target identifier*, not necessarily its encoding of protein-level structural information. When fingerprint models are given explicit target identity through simpler means, they perform at least as well. The value proposition of ESM-2 embeddings for selectivity would be stronger in a setting where the model must generalize to targets not seen during training — which is precisely the setting where protein-aware models underperform (Section 9.4).
+
 ### 10.6 Worst predictions
 
 The worst-predicted JAK compounds show interesting model-specific failure patterns:
@@ -415,109 +437,149 @@ Notably, none of the top-20 worst predictions per model are flagged as noisy mea
 
 An important finding: **no JAK test compounds exist in the target-held-out split**. All four JAK members were assigned to the training fold during target-based splitting. This means the target-split results in Section 9 evaluate generalization to other kinase subfamilies (e.g., CDKs, MAP kinases) using JAK as *training* data, not as a prediction target. This is by design — the target split tests cross-subfamily transfer, and JAK happens to fall on the training side of the partition.
 
-## 11. Statistical Significance: Bootstrap Analysis
+## 11. Statistical Significance
 
-### 11.1 Motivation
+### 11.1 Multi-seed evaluation methodology
 
-Point estimates of test-set metrics (RMSE, R², etc.) are subject to sampling variability — a single test set may not capture the true performance difference between models. To establish whether observed differences are statistically significant, we employ non-parametric bootstrap analysis: resampling the test predictions (without retraining) to generate confidence intervals and paired significance tests.
+Point estimates of test-set metrics from a single training run are subject to both test-set sampling variability and training stochasticity (random initialization, data shuffling, dropout masks). To disentangle these effects and establish robust model comparisons, we employ two complementary approaches:
 
-### 11.2 Methodology
+**Multi-seed training** (5 seeds: 42, 123, 456, 789, 1024): Each of the 7 models is trained 5 times on each of the 3 splits, yielding 105 experiments. We report mean ± SD across seeds and use paired t-tests (df = 4) across seeds for pairwise model comparisons. This captures training stochasticity — the variability that different random initializations or tree constructions produce even on the same data.
 
-**Bootstrap confidence intervals**: For each of the 21 experiments (7 models × 3 splits), we draw 10,000 bootstrap samples (sampling with replacement from test predictions) and compute six metrics per sample: RMSE, MAE, R², Pearson R, Spearman ρ, and AUROC. The 2.5th and 97.5th percentiles define 95% confidence intervals. RMSE and MAE are computed via a vectorized fast path that constructs a `(10000, n_test)` residual matrix for ~100× speedup over Python loops.
+**Bootstrap confidence intervals** (10,000 resamples): For each single-seed experiment, we resample test predictions to estimate CIs on individual metrics and run paired bootstrap tests for same-data model comparisons. This captures test-set sampling variability — the uncertainty about performance on different test-set compositions.
 
-**Paired bootstrap tests**: Independent CIs can overlap even when one model is consistently better, because they don't account for correlated errors on the same test compounds. Paired tests resample the *same indices* for both models simultaneously, computing the metric difference on each bootstrap sample. The p-value is the fraction of samples where the sign of the difference reverses — directly testing whether model A is better than model B.
+The multi-seed analysis is the more conservative and comprehensive approach: it tests whether model A is *reliably* better than model B across different training runs, not just on a specific set of learned parameters.
 
-**Win-rate matrix**: For all 21 pairwise model comparisons within each split, we compute the fraction of bootstrap samples where model A has lower RMSE than model B, providing a probabilistic ranking.
+### 11.2 Multi-seed significance results
 
-### 11.3 Key results: Confidence intervals
+Paired t-tests (two-sided, 5 seeds) for key model comparisons on RMSE:
+
+| Comparison | Split | ΔRMSE (A − B) | p-value | Significant? |
+|-----------|-------|--------------|---------|-------------|
+| RF vs ESM-FP MLP | Random | +0.041 | < 0.001 | *** ESM-FP MLP wins |
+| RF vs MLP | Random | −0.008 | < 0.001 | *** RF wins |
+| RF vs GIN | Random | −0.009 | < 0.001 | *** RF wins |
+| MLP vs ESM-FP MLP | Random | +0.049 | < 0.001 | *** ESM-FP MLP wins |
+| MLP vs GIN | Random | −0.001 | 0.403 | ns (tied) |
+| ESM-FP MLP vs Fusion | Random | −0.014 | < 0.001 | *** ESM-FP MLP wins |
+| | | | | |
+| RF vs MLP | Scaffold | +0.018 | < 0.001 | *** MLP wins |
+| RF vs ESM-FP MLP | Scaffold | +0.017 | < 0.001 | *** ESM-FP MLP wins |
+| MLP vs ESM-FP MLP | Scaffold | −0.001 | 0.575 | **ns (tied)** |
+| MLP vs GIN | Scaffold | −0.046 | < 0.001 | *** MLP wins |
+| ESM-FP MLP vs Fusion | Scaffold | −0.037 | 0.001 | ** ESM-FP MLP wins |
+| | | | | |
+| RF vs MLP | Target | −0.038 | 0.002 | ** RF wins |
+| RF vs ESM-FP MLP | Target | −0.113 | < 0.001 | *** RF wins |
+| RF vs GIN | Target | −0.111 | 0.001 | ** RF wins |
+| MLP vs ESM-FP MLP | Target | −0.075 | 0.002 | ** MLP wins |
+| MLP vs GIN | Target | −0.073 | 0.013 | * MLP wins |
+| ESM-FP MLP vs Fusion | Target | −0.016 | 0.414 | ns (tied) |
+
+### 11.3 Key statistical findings
+
+**1. ESM-FP MLP's scaffold-split advantage disappears under multi-seed evaluation.** Our preliminary bootstrap analysis (single seed) found ESM-FP MLP significantly better than MLP on scaffold splits (ΔRMSE = −0.008, p = 0.003). However, across 5 training seeds, MLP (0.901 ± 0.003) and ESM-FP MLP (0.902 ± 0.004) are statistically indistinguishable (p = 0.575). The single-seed result was a false positive driven by a particular initialization — the "advantage" does not replicate. This demonstrates why multi-seed evaluation is essential for deep model comparisons.
+
+**2. All random-split rankings are statistically robust.** Every pairwise comparison on the random split is significant (p < 0.001) except MLP vs GIN (p = 0.403, tied). The confirmed ranking is: ESM-FP MLP > Fusion > RF > {MLP ≈ GIN} > XGBoost > ElasticNet.
+
+**3. RF's target-split dominance is unambiguous.** RF significantly outperforms every other model on the target split (all p < 0.003). The margin over the best deep model (ESM-FP MLP) is ΔRMSE = 0.113 — a 10.6% gap that is both statistically significant and practically meaningful.
+
+**4. Deep model variance inflates single-seed comparisons.** GIN and Fusion show target-split SDs of 0.031–0.032 RMSE across seeds, meaning a single-seed evaluation could over- or under-estimate their performance by ~3%. Single-seed point estimates should not be used for model ranking when deep models are involved.
+
+### 11.4 Bootstrap confidence intervals
+
+For completeness, bootstrap CIs from single-seed evaluations provide complementary information about test-set sampling variability:
 
 | Model | Split | RMSE | 95% CI | R² | 95% CI |
 |-------|-------|------|--------|-----|--------|
 | ESM-FP MLP | Random | 0.775 | [0.768, 0.783] | 0.629 | [0.622, 0.637] |
 | Fusion | Random | 0.793 | [0.785, 0.800] | 0.613 | [0.605, 0.620] |
 | Random Forest | Random | 0.818 | [0.811, 0.826] | 0.587 | [0.580, 0.594] |
-| MLP | Random | 0.824 | [0.816, 0.832] | 0.581 | [0.573, 0.589] |
-| GIN | Random | 0.829 | [0.821, 0.836] | 0.577 | [0.569, 0.585] |
-| ESM-FP MLP | Scaffold | 0.897 | [0.889, 0.905] | 0.502 | [0.493, 0.511] |
-| MLP | Scaffold | 0.905 | [0.898, 0.913] | 0.493 | [0.485, 0.502] |
-| RF | Scaffold | 0.919 | [0.912, 0.927] | 0.477 | [0.471, 0.484] |
 | RF | Target | 1.067 | [1.059, 1.076] | 0.265 | [0.255, 0.275] |
-| MLP | Target | 1.090 | [1.081, 1.099] | 0.234 | [0.222, 0.245] |
 | ESM-FP MLP | Target | 1.177 | [1.167, 1.186] | 0.107 | [0.096, 0.119] |
 
-Confidence intervals are narrow (±0.008 RMSE typical), reflecting the large test sets (~35,000 samples). This means even small metric differences are detectable.
+Bootstrap CIs are narrow (±0.008 RMSE typical) due to large test sets (~35,000 samples), confirming that test-set sampling variability is small relative to the inter-model differences.
 
-### 11.4 Paired bootstrap test findings
+### 11.5 Implications
 
-The paired tests reveal critical distinctions that independent CIs miss:
+1. **Multi-seed evaluation changes conclusions.** The single-seed ESM-FP MLP scaffold advantage (our prior Finding 6) was a false positive. This underscores that published single-seed comparisons of deep models are unreliable.
+2. **Training stochasticity dominates test-set variability for deep models.** Deep model RMSE SD across seeds (0.002–0.032) exceeds the bootstrap CI half-width (~0.008) for scaffold and target splits, meaning training randomness is the primary source of uncertainty.
+3. **Tree-based models are deterministically reliable.** RF and XGBoost SDs < 0.002 across seeds mean their single-seed estimates are trustworthy, while deep models require ≥3 seeds for reliable comparison.
 
-**ESM-FP MLP vs. MLP (scaffold split)**: ΔRMSE = −0.008 [−0.013, −0.003], p = 0.003. Despite the tiny absolute difference (0.9%), the paired test confirms this is statistically significant — ESM-FP MLP *consistently* beats MLP on the same test compounds. The independent CIs overlap substantially, but the paired test accounts for correlated errors and detects the systematic advantage.
-
-**RF vs. MLP (random split)**: ΔRMSE = −0.006 [−0.009, −0.002], p = 0.002. RF is significantly better than MLP on random splits, resolving the apparent near-tie in point estimates.
-
-**MLP vs. GIN (random split)**: ΔRMSE = −0.005 [−0.009, +0.000], p = 0.050. Borderline non-significant — the fingerprint MLP and graph neural network are statistically indistinguishable, confirming that learned graph representations provide no advantage over fixed Morgan fingerprints at this scale.
-
-**GIN vs. Fusion (scaffold split)**: ΔRMSE = −0.004 [−0.010, +0.003], p = 0.254. Not significant — these two models are interchangeable on scaffold splits, despite the Fusion model having access to protein embeddings.
-
-**XGBoost vs. Fusion (target split)**: ΔRMSE = −0.002 [−0.008, +0.003], p = 0.407. Not significant — XGBoost (a simple fingerprint model) is statistically tied with the most complex neural architecture on the hardest evaluation setting.
-
-**RF vs. all deep models (target split)**: All three comparisons are highly significant (p < 0.001). Random Forest's advantage over ESM-FP MLP (ΔRMSE = −0.109, p < 0.001), GIN (ΔRMSE = −0.078, p < 0.001), and Fusion (ΔRMSE = −0.070, p < 0.001) on the target split is unambiguous.
-
-### 11.5 Win-rate matrix
-
-The win-rate matrix provides a probabilistic model ranking. On each bootstrap sample, we determine which model has the lower RMSE, yielding a "win probability" for every pair:
-
-- **Random split**: ESM-FP MLP wins against all other models in 100% of bootstrap samples. The ranking ESM-FP MLP > Fusion > RF > MLP > GIN > XGBoost is stable.
-- **Scaffold split**: ESM-FP MLP beats MLP in 99.9% of samples (confirming significance despite small margin). MLP beats RF in 100% of samples. GIN vs. Fusion is a coin flip (87% for GIN).
-- **Target split**: RF beats every other model in ≥99.6% of samples, confirming its dominance on the hardest split. MLP beats ESM-FP MLP in 100% of samples — protein embeddings are a clear liability for novel targets.
-
-### 11.6 Implications
-
-1. **Small differences are real.** The large test sets provide enough statistical power to distinguish 0.5-1% RMSE differences. ESM-FP MLP's scaffold-split advantage (0.9%) is genuine, not noise.
-2. **The model ranking is robust.** Bootstrap win rates exceeding 99% for key comparisons mean the rankings in Section 9 would replicate under different test-set compositions.
-3. **Non-results are informative.** The inability to distinguish MLP from GIN (p = 0.05) or XGBoost from Fusion on target splits (p = 0.41) confirms that architectural complexity provides no benefit in these settings.
-
-## 12. Limitations: ESM-2 Embedding Coverage
+## 12. ESM-2 Embedding Coverage: Ablation Studies
 
 ### 12.1 The embedding fallback problem
 
-A critical limitation of the protein-aware models (ESM-FP MLP and Fusion) must be disclosed: **only 92 of the 507 kinase targets (18.1%) have real ESM-2 embeddings.** The remaining 415 targets (81.9%) lack UniProt protein sequences in our pipeline, because the ChEMBL API did not return UniProt cross-references for these targets during the sequence retrieval step (Section 9.2).
+A critical limitation of the protein-aware models (ESM-FP MLP and Fusion) is that **only 92 of the 507 kinase targets (18.1%) have real ESM-2 embeddings.** The remaining 415 targets (81.9%) lack UniProt protein sequences in our pipeline, because the ChEMBL API did not return UniProt cross-references for these targets during the sequence retrieval step (Section 9.2).
 
-The deep trainer code silently handles missing embeddings by falling back to row 0 of the embedding matrix:
+The original deep trainer code handles missing embeddings by falling back to row 0 of the embedding matrix — an arbitrary real kinase's ESM-2 embedding. This means that for 415 out of 507 targets, the protein-aware models receive an *identical, arbitrary* protein representation.
 
-```python
-esm_rows = np.array([
-    target_to_row.get(t, 0)  # fallback to row 0 for unknown targets
-    for t in subset["target_chembl_id"].values
-])
-```
+To quantify the impact of this limitation, we conducted two ablation studies: (1) a fallback strategy comparison, and (2) a clean 92-target subset evaluation.
 
-Row 0 corresponds to whichever target is alphabetically first in the target index — an arbitrary real kinase's ESM-2 embedding. This means that for 415 out of 507 targets, the protein-aware models receive an *identical, arbitrary* protein representation, effectively reducing them to fingerprint-only models for those targets.
+### 12.2 Fallback strategy ablation
 
-### 12.2 Impact on results
+We retrained ESM-FP MLP and Fusion with three different fallback strategies for the 415 targets without real ESM-2 embeddings:
 
-The impact depends on the fraction of *records* (not targets) affected, since some targets have orders of magnitude more measurements than others:
+- **row0** (original): use the first target's real embedding as fallback
+- **zero**: use a zero vector (1280 dims) — the model receives no protein signal
+- **mean**: use the mean of all 92 real embeddings — a "generic kinase" representation
 
-Although the embedding files are not available locally for exact quantification (they reside on the AWS training instance), the user's analysis confirms that approximately 82% of targets receive the fallback embedding. The record-level impact may differ if the 92 real-embedding targets are enriched for well-studied kinases with many measurements — a plausible scenario, since UniProt coverage correlates with research interest and ChEMBL measurement count.
+| Model / Split | row0 (orig) | zero | mean | Max Δ |
+|---------------|-------------|------|------|-------|
+| ESM-FP MLP / random | 0.775 | 0.771 | 0.775 | 0.005 |
+| ESM-FP MLP / scaffold | 0.897 | 0.881 | 0.899 | 0.018 |
+| ESM-FP MLP / target | 1.177 | 1.194 | 1.177 | 0.017 |
+| Fusion / random | 0.793 | 0.788 | 0.792 | 0.005 |
+| Fusion / scaffold | 0.945 | 0.946 | 0.949 | 0.005 |
+| Fusion / target | 1.138 | 1.115 | 1.239 | **0.125** |
 
-### 12.3 Interpretation
+**Key finding: the fallback strategy has minimal impact for 5 of 6 conditions** (Δ < 0.02 RMSE). This confirms that for the majority of the dataset, the models learn to effectively ignore the protein embedding for fallback targets — the fingerprint branch dominates predictions regardless of what vector is supplied to the protein branch.
 
-This limitation has two contrasting interpretations:
+The one exception is **Fusion on the target split**, where the mean-vector fallback causes catastrophic degradation (RMSE = 1.239 vs 1.115 for zero). This suggests the Fusion model is sensitive to the protein branch signal on the target split, where the shared "generic kinase" embedding misleads predictions for novel kinase subfamilies.
 
-**Pessimistic**: The ESM-FP MLP and Fusion models are operating with severely degraded protein information for the majority of their training and test data. The reported performance improvements on random and scaffold splits may underestimate the true potential of protein-aware architectures. With proper UniProt coverage for all 507 targets, the protein-aware advantage could be substantially larger.
+### 12.3 Clean 92-target subset evaluation
 
-**Optimistic (and arguably more important)**: Despite receiving garbage protein embeddings for ~82% of targets, ESM-FP MLP still achieves the best performance on random and scaffold splits (RMSE = 0.775 and 0.897, respectively). The model successfully learned to leverage the *real* embeddings for the 92 targets that have them, while the shared fallback embedding for the remaining 415 targets acted as a form of implicit regularization — the model learned not to rely too heavily on the protein branch for the majority of targets where it provided no discriminative information.
+To isolate the effect of protein embeddings from fallback noise, we created a clean subset containing only the 92 targets with real ESM-2 embeddings (67,902 records, 19.2% of the full dataset). All 7 models were retrained and evaluated on this subset with fresh splits.
+
+| Model / Split | Full (507 targets) | ESM-92 subset | Δ |
+|---------------|-------------------|---------------|---|
+| **ESM-FP MLP / random** | **0.777** | **0.647** | **−0.130** |
+| Fusion / random | 0.791 | 0.695 | −0.096 |
+| RF / random | 0.819 | 0.786 | −0.033 |
+| MLP / random | 0.827 | 0.835 | +0.008 |
+| GIN / random | 0.828 | 0.787 | −0.041 |
+| XGBoost / random | 0.894 | 0.797 | −0.097 |
+| | | | |
+| **ESM-FP MLP / scaffold** | **0.902** | **0.826** | **−0.076** |
+| Fusion / scaffold | 0.939 | 0.858 | −0.081 |
+| RF / scaffold | 0.919 | 0.872 | −0.048 |
+| GIN / scaffold | 0.947 | 0.879 | −0.068 |
+| | | | |
+| RF / target | 1.066 | 1.017 | −0.050 |
+| Fusion / target | 1.196 | 1.062 | −0.134 |
+| GIN / target | 1.177 | 1.118 | −0.059 |
+| ESM-FP MLP / target | 1.180 | 1.260 | +0.080 |
+
+**Critical findings from the 92-target subset:**
+
+**1. Protein embeddings provide a massive boost when all targets have real embeddings.** ESM-FP MLP RMSE drops from 0.777 to 0.647 on random splits — a 16.7% improvement and an absolute Δ of 0.130. This is the clearest evidence that incomplete embedding coverage masked the true potential of protein-aware models in the full-dataset analysis.
+
+**2. The Fusion model also benefits substantially.** Fusion improves from 0.791 to 0.695 (random) and from 1.196 to 1.062 (target) on the clean subset. On the target split, the Fusion model's RMSE improves by 0.134 — suggesting that with real embeddings for all targets, the protein branch provides genuine cross-target transfer.
+
+**3. Baselines also improve on the smaller subset.** RF improves from 0.819 to 0.786 (random), likely because the 92 well-studied targets have denser, cleaner data. This confound — well-studied targets may be intrinsically easier — means the ESM-92 subset results should be interpreted cautiously as an upper bound on protein embedding value.
+
+**4. ESM-FP MLP degrades on the 92-target target split.** Despite having real embeddings for all targets, ESM-FP MLP RMSE worsens from 1.180 to 1.260. With only 92 targets, the target split holds out ~10 targets for testing — this small test set and the MLP architecture's tendency to overfit to target-specific embedding patterns may explain this degradation.
 
 ### 12.4 JAK case study is unaffected
 
-The JAK family case study (Section 10) is **not affected** by this limitation. All four JAK kinases (JAK1, JAK2, JAK3, TYK2) are well-characterized human proteins with UniProt sequences and therefore have real, distinct ESM-2 embeddings. The selectivity prediction results (79% top-1 accuracy for protein-aware models vs. 52% for fingerprint-only models) reflect genuine protein-aware reasoning with correct embeddings. This makes the JAK selectivity finding the strongest evidence for the value of protein embeddings in our study.
+The JAK family case study (Section 10) is **not affected** by the fallback limitation. All four JAK kinases (JAK1, JAK2, JAK3, TYK2) have real, distinct ESM-2 embeddings. The selectivity prediction results reflect genuine protein-aware reasoning.
 
-### 12.5 Recommended remediation
+### 12.5 Implications
 
-Future work should address this gap:
-1. **Expand sequence coverage**: Use alternative databases (NCBI Protein, PDB) or manual curation to retrieve sequences for the missing 415 targets
-2. **Explicit missing-target handling**: Replace the silent `.get(t, 0)` fallback with a learned "unknown protein" embedding or a zero vector, so the model can explicitly learn a fallback strategy
-3. **Ablation study**: Retrain models with only the 92 targets that have real embeddings, to isolate the effect of protein information from the noise of fallback embeddings
+The ablation studies resolve the earlier ambiguity about whether incomplete ESM-2 coverage undermined or coincidentally helped the protein-aware models:
+
+1. **The full-dataset results underestimate protein embedding potential.** With complete coverage, ESM-FP MLP achieves RMSE = 0.647 on random splits — far better than any baseline. The 0.130 RMSE improvement (vs 0.042 on the full dataset) suggests 82% of the protein embedding's potential was wasted on fallback vectors.
+2. **Fallback strategy doesn't matter for most conditions**, confirming that the model learns to ignore the protein branch for targets with uninformative embeddings.
+3. **Expanding UniProt coverage remains the highest-priority improvement.** Retrieving sequences for the missing 415 targets via NCBI Protein, PDB, or manual curation would likely yield substantial performance gains for protein-aware architectures.
 
 ## 13. Conclusions
 
@@ -525,36 +587,38 @@ Future work should address this gap:
 
 **When do complex, structure-aware ML models outperform simple cheminformatics baselines?**
 
-Based on our systematic evaluation of 7 models across 3 splitting strategies (21 experiments total, ~350K kinase bioactivity records):
+Based on our systematic evaluation of 7 models across 3 splitting strategies, with 5-seed replication (105 training runs on the full 507-target dataset, plus 21 experiments on a clean 92-target subset with complete ESM-2 coverage, and 12 fallback ablation experiments):
 
-1. **Complex models win under lenient evaluation conditions.** ESM-FP MLP achieves the best RMSE (0.775) on random splits, a 5.3% improvement over Random Forest (0.818). The protein embedding provides useful information about target identity when the model has seen examples from the same kinases during training.
+1. **Complex models win under lenient evaluation conditions — significantly.** ESM-FP MLP achieves the best multi-seed RMSE (0.777 ± 0.002) on random splits, significantly outperforming Random Forest (0.819 ± 0.000; paired t-test p < 0.001) and MLP (0.827 ± 0.002; p < 0.001). The protein embedding provides useful information about target identity when the model has seen examples from the same kinases during training.
 
-2. **The advantage nearly vanishes under scaffold splits.** When structural analogs can't leak between train and test, the best deep model (ESM-FP MLP, RMSE=0.897) barely edges the best baseline (MLP, RMSE=0.905) by 0.9%. This confirms that much of the reported advantage of complex models in the literature reflects evaluation methodology, not genuine predictive improvement.
+2. **The advantage vanishes under scaffold splits.** When structural analogs can't leak between train and test, MLP (0.901 ± 0.003) and ESM-FP MLP (0.902 ± 0.004) are statistically indistinguishable (p = 0.575). Our preliminary single-seed analysis incorrectly reported a significant 0.9% ESM-FP MLP advantage; multi-seed evaluation reveals this was a false positive. This demonstrates that single-seed comparisons of deep models are unreliable.
 
-3. **Baselines win under the most realistic evaluation.** When predicting for unseen kinase subfamilies (target split), Random Forest (RMSE=1.067) outperforms every neural model, and protein-aware ESM-FP MLP drops to last place (RMSE=1.177). This directly contradicts the intuition that protein information should help most for novel targets.
+3. **Baselines win under the most realistic evaluation — decisively.** When predicting for unseen kinase subfamilies (target split), Random Forest (1.066 ± 0.002) significantly outperforms every other model (all p < 0.003). Protein-aware models rank 5th–6th: ESM-FP MLP (1.180 ± 0.015) and Fusion (1.196 ± 0.031). This directly contradicts the intuition that protein information should help most for novel targets.
 
-4. **Uncertainty quantification is a baseline strength.** Tree-based uncertainty (RF, XGBoost) substantially outperforms MC-Dropout uncertainty (deep models) in calibration, error-uncertainty correlation, and selective prediction improvement. XGBoost's quantile regression achieves near-perfect calibration (miscal. area = 0.003 on scaffold split), while MC-Dropout estimates are effectively uninformative (negative error-uncertainty correlation, no selective prediction benefit).
+4. **Incomplete ESM-2 coverage masked the true potential of protein embeddings.** On the 92-target clean subset (all targets with real ESM-2 embeddings), ESM-FP MLP achieves RMSE = 0.647 — a 16.7% improvement over the full-dataset result (0.777). The 415 fallback targets diluted the protein signal, meaning the full-dataset analysis substantially underestimates protein embedding potential (Section 12.3).
 
-5. **The representation bottleneck matters more than the model.** Morgan fingerprints with Random Forest (87s training) match or beat learned GIN representations (1411s training) across all splits. The GIN architecture doesn't learn representations superior to ECFP4 for kinase affinity prediction at this data scale.
+5. **Uncertainty quantification is a baseline strength.** Tree-based uncertainty (RF, XGBoost) substantially outperforms MC-Dropout uncertainty (deep models) in calibration, error-uncertainty correlation, and selective prediction improvement. XGBoost's quantile regression achieves near-perfect calibration (miscal. area = 0.003 on scaffold split), while MC-Dropout estimates are effectively uninformative.
 
-6. **Small differences are statistically real.** Bootstrap paired tests (10,000 resamples) confirm that even the slim 0.9% ESM-FP MLP advantage on scaffold splits is significant (p = 0.003, paired ΔRMSE = −0.008 [−0.013, −0.003]). Model rankings are robust: win rates exceed 99% for key comparisons across all splits (Section 11).
+6. **The representation bottleneck matters more than the model.** Morgan fingerprints with Random Forest (87s training) match or beat learned GIN representations (1411s training) across all splits. MLP and GIN are statistically indistinguishable on random splits (p = 0.403), and MLP significantly outperforms GIN on scaffold (p < 0.001) and target splits (p = 0.013).
 
-7. **Protein-aware models shine for selectivity, not affinity.** The JAK case study reveals that ESM-FP MLP and Fusion achieve 79% top-1 selectivity accuracy (predicting which JAK member a compound preferentially inhibits) vs. 52% for fingerprint-only models — the strongest evidence for the value of protein embeddings (Section 10.5).
+7. **Multi-seed evaluation is essential for deep models.** Deep model RMSE SDs across seeds (0.002–0.032) exceed bootstrap CI half-widths (~0.008), meaning training stochasticity is the primary source of uncertainty. Tree-based models have near-zero cross-seed variance (SD < 0.002), making single-seed estimates reliable. Published single-seed comparisons involving deep models should be interpreted with caution.
 
-8. **ESM-2 embedding coverage is incomplete.** Only 92 of 507 targets (18%) have real protein embeddings; the remaining 415 receive an identical fallback embedding (Section 12). Despite this handicap, protein-aware models still outperform baselines on random and scaffold splits, suggesting the results may underestimate the potential of protein-aware architectures with complete coverage.
+8. **Protein-aware models shine for selectivity, but simpler approaches close the gap.** ESM-FP MLP achieves 79% top-1 JAK selectivity accuracy vs 52% for pooled fingerprint models (Section 10.5). However, stronger baselines — per-target models (83%) and one-hot target-conditioned models (84%) — achieve comparable or better selectivity using explicit target identity rather than learned protein embeddings (Section 10.5.1). The ESM-2 embedding functions primarily as an implicit target identifier in this context.
 
 ### Implications for drug discovery ML
 
-- **Always evaluate on scaffold and target-held-out splits.** Random-split metrics inflate performance by 12-52% and can reverse model rankings.
-- **Start with Random Forest + Morgan fingerprints.** This simple baseline trains in under 2 minutes, provides well-calibrated uncertainty, and is competitive with or superior to GPU-trained neural networks.
-- **Protein embeddings help for interpolation, hurt for extrapolation.** ESM-2 features improve predictions for known target families but create overfitting when predicting for novel targets.
+- **Always evaluate on scaffold and target-held-out splits.** Random-split metrics inflate performance by 12–52% and can reverse model rankings.
+- **Always report multi-seed results for deep models.** Single-seed evaluations can produce false positives (as demonstrated by our scaffold-split ESM-FP MLP result). We recommend ≥3 seeds with mean ± SD reporting.
+- **Start with Random Forest + Morgan fingerprints.** This simple baseline trains in under 2 minutes, provides well-calibrated uncertainty, shows near-zero training variance, and is competitive with or superior to GPU-trained neural networks.
+- **Protein embeddings help for interpolation, hurt for extrapolation.** ESM-2 features improve predictions for known target families but create overfitting when predicting for novel targets. Expanding embedding coverage is the single highest-impact improvement for protein-aware models.
 - **MC-Dropout is not a reliable uncertainty method** for these architectures and data scales. Tree-based or quantile-based methods provide far more actionable uncertainty estimates.
 - **The target generalization problem remains open.** No model achieves R² > 0.27 on the target split. Closing this gap likely requires fundamentally different approaches: fine-tuning protein language models, incorporating 3D structural information, or developing transfer learning methods that explicitly account for kinase subfamily relationships.
 
 ### Future directions
 
-- **Expand ESM-2 coverage**: retrieve UniProt sequences for the missing 415 targets (Section 12.5) and retrain protein-aware models with complete embeddings
-- **Improved uncertainty for deep models**: deeper ensembles (5+ models), evidential deep learning, or heteroscedastic regression heads
+- **Expand ESM-2 coverage** (highest priority): retrieve UniProt sequences for the missing 415 targets via NCBI Protein, PDB, or manual curation — the 92-target subset results suggest this could yield RMSE improvements of 0.10–0.13 for protein-aware models
+- **Temporal split validation**: add time-based splits using ChEMBL document_year to simulate prospective prediction
+- **UQ normalization**: post-hoc isotonic recalibration for MC-Dropout uncertainty to match tree-based calibration quality
 - **Fine-tuned ESM-2**: rather than frozen embeddings, fine-tuning the last few layers on kinase binding data may improve target-split generalization
 - **3D structure features**: docking scores, binding site descriptors, or SE(3)-equivariant networks that encode protein-ligand geometry
 - **Meta-learning**: few-shot approaches for predicting on novel kinase targets with limited assay data

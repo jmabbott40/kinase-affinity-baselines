@@ -1,0 +1,6 @@
+model,n_compounds,top1_accuracy,mean_rank_corr,n_with_rank_corr,split
+per_target_random_forest,254,0.8858,0.4167,12,random
+per_target_mlp,254,0.8031,0.5,12,random
+onehot_random_forest,254,0.8819,0.6667,12,random
+onehot_mlp,254,0.8701,0.6667,12,random
+pairwise_random_forest,254,0.9016,0.6667,12,random

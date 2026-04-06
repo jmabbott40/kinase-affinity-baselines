@@ -1,0 +1,13 @@
+{
+  "model": "elasticnet",
+  "split": "random",
+  "best_params": {
+    "alpha": 0.001,
+    "l1_ratio": 0.1,
+    "max_iter": 10000,
+    "random_state": 42
+  },
+  "best_val_rmse": 1.1430764758046092,
+  "best_val_r2": 0.1969318958980404,
+  "n_combinations_tested": 35
+}

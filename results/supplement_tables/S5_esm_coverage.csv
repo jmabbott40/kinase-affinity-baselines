@@ -1,0 +1,4 @@
+kinase_group,total_targets,targets_with_emb,total_records,targets_without_emb,coverage_pct,records_with_emb,record_coverage_pct
+Other kinase,471,86,281292,385,18.3,62229,22.1
+Tyrosine kinase,35,6,71581,29,17.1,5673,7.9
+Serine/Threonine kinase,1,0,1,1,0.0,0,0.0

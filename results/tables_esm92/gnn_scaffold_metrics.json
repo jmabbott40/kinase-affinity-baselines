@@ -1,0 +1,23 @@
+{
+  "model": "gnn",
+  "split": "scaffold",
+  "training_seed": null,
+  "fallback_strategy": "row0",
+  "output_suffix": "_esm92",
+  "train_time_seconds": 210.8,
+  "best_epoch": 64,
+  "n_train": 54325,
+  "n_val": 6790,
+  "n_test": 6787,
+  "test_rmse": 0.878886724797036,
+  "test_mae": 0.6681054299931929,
+  "test_r2": 0.5507695520188338,
+  "test_pearson_r": 0.7425363016914417,
+  "test_spearman_rho": 0.7232048780542745,
+  "test_auroc": 0.8260568409622453,
+  "test_auprc": 0.9504410666635809,
+  "test_precision_at_100": 1.0,
+  "test_precision_at_500": 0.998,
+  "test_ef_1pct": 1.239634703196347,
+  "test_ef_5pct": 1.239634703196347
+}

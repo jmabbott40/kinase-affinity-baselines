@@ -1,0 +1,23 @@
+{
+  "model": "fusion",
+  "split": "scaffold",
+  "training_seed": null,
+  "fallback_strategy": "mean",
+  "output_suffix": "_fb_mean",
+  "train_time_seconds": 824.3,
+  "best_epoch": 38,
+  "n_train": 282301,
+  "n_val": 35288,
+  "n_test": 35285,
+  "test_rmse": 0.9493582324923364,
+  "test_mae": 0.7327786528457744,
+  "test_r2": 0.44289453977516335,
+  "test_pearson_r": 0.6710412879646768,
+  "test_spearman_rho": 0.6512772653539234,
+  "test_auroc": 0.8147695800660679,
+  "test_auprc": 0.9399150747501662,
+  "test_precision_at_100": 1.0,
+  "test_precision_at_500": 1.0,
+  "test_ef_1pct": 1.2576184196457212,
+  "test_ef_5pct": 1.2469243854650602
+}
