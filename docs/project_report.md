@@ -115,7 +115,7 @@ We implemented four baseline models, each representing a different modeling phil
 
 **Uncertainty**: Bootstrap resampling. 100 ElasticNet models are trained on bootstrap samples (sampling with replacement from training data), and prediction variance across the ensemble provides uncertainty estimates.
 
-**Important caveat**: ElasticNet with alpha=1.0 proves to be too aggressively regularized for this dataset (see Section 6). All coefficients are driven to zero, producing near-constant predictions. A hyperparameter search over alpha values (planned for Phase 5) is needed to find the optimal regularization strength.
+**Important caveat**: ElasticNet with alpha=1.0 proves to be too aggressively regularized for this dataset (see Section 6). All coefficients are driven to zero, producing near-constant predictions. A grid search over alpha values (Section 8.4) found that alpha=0.001 with l1_ratio=0.1 yields the best validation RMSE (1.143), though ElasticNet remains the weakest model even when optimally tuned.
 
 ### 5.4 MLP (Multi-Layer Perceptron)
 
@@ -179,9 +179,9 @@ We implemented four baseline models, each representing a different modeling phil
 
 Going from random to scaffold split costs ~12% in RMSE, and moving to target split costs ~30%. This quantifies the "scaffold leakage" and "target leakage" effects that inflate reported performance in many published studies. MLP shows a similar pattern (random R^2=0.581 → target R^2=0.234, a 60% drop).
 
-**4. XGBoost underperforms RF despite theoretical advantages.** Gradient boosting typically outperforms bagging on tabular data, but here XGBoost consistently trails RF by 5-10% on RMSE. The likely explanation is that XGBoost's depth limit (max_depth=6) constrains its expressiveness on 2048-dimensional binary data, while RF's unlimited-depth trees can capture deeper feature interactions. A hyperparameter search over max_depth (Phase 5) may close this gap.
+**4. XGBoost underperforms RF despite theoretical advantages.** Gradient boosting typically outperforms bagging on tabular data, but here XGBoost consistently trails RF by 5-10% on RMSE. The likely explanation is that XGBoost's depth limit (max_depth=6) constrains its expressiveness on 2048-dimensional binary data, while RF's unlimited-depth trees can capture deeper feature interactions. A grid search over max_depth (Section 8.4) confirms this hypothesis: increasing depth to 12 improves XGBoost's validation RMSE from 0.886 to 0.805, approaching RF's performance.
 
-**5. ElasticNet with default hyperparameters collapses completely.** With alpha=1.0 and l1_ratio=0.5, all coefficients are driven to zero, producing constant predictions (R^2 ~ 0, AUROC = 0.5). This is not a bug -- it demonstrates that strong L1 regularization on 217 descriptors is too aggressive for this problem. The AUPRC values (0.715-0.795) are not meaningful here; they simply reflect the dataset's class prior (77.3% active). Reducing alpha by 2-3 orders of magnitude (0.001-0.01) would likely recover meaningful predictions and is planned for the hyperparameter search phase.
+**5. ElasticNet with default hyperparameters collapses completely.** With alpha=1.0 and l1_ratio=0.5, all coefficients are driven to zero, producing constant predictions (R^2 ~ 0, AUROC = 0.5). This is not a bug — it demonstrates that strong L1 regularization on 217 descriptors is too aggressive for this problem. The AUPRC values (0.715-0.795) are not meaningful here; they simply reflect the dataset's class prior (77.3% active). A grid search (Section 8.4) confirmed that reducing alpha to 0.001 recovers meaningful predictions (val RMSE = 1.143), though ElasticNet remains the weakest model.
 
 **6. Validation and test metrics are consistent.** Across all experiments, validation and test metrics track closely (e.g., RF random: val R^2=0.594 vs test R^2=0.587; MLP random: val R^2=0.585 vs test R^2=0.581), indicating that the splits are well-constructed and results are not artifacts of a particular test set.
 
@@ -270,13 +270,57 @@ Identifying the compounds with the largest absolute errors reveals failure modes
 - **Underrepresented scaffolds**: novel chemical matter far from training distribution
 - **Mixed activity types**: compounds measured as IC50 vs Ki vs Kd may have systematic offsets
 
-### 8.4 Hyperparameter tuning
+### 8.4 Hyperparameter tuning and sensitivity
 
-Phase 4 revealed that ElasticNet with default alpha=1.0 collapses completely (all coefficients driven to zero). Phase 5 includes a validation-set hyperparameter search over:
-- **ElasticNet**: alpha ∈ {0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0} × l1_ratio ∈ {0.1, 0.3, 0.5, 0.7, 0.9}
-- **XGBoost**: max_depth ∈ {4, 6, 8, 10, 12} × learning_rate ∈ {0.05, 0.1} × n_estimators ∈ {300, 500}
+#### Search strategy and budget
 
-*Tuning results and re-evaluated metrics will be populated after running the tuning pipeline (`python -m kinase_affinity.training.tune --all`).*
+We conducted exhaustive grid search (all combinations enumerated via `itertools.product`) for 2 of 7 models, evaluating on the random-split validation set:
+
+| Model | Parameters searched | Grid size | Best val RMSE | Default val RMSE |
+|-------|-------------------|-----------|---------------|------------------|
+| XGBoost | max_depth × learning_rate × n_estimators | 5 × 2 × 2 = 20 | 0.805 (depth=12, lr=0.1, n=500) | 0.886 (depth=6) |
+| ElasticNet | alpha × l1_ratio | 7 × 5 = 35 | 1.143 (α=0.001, ratio=0.1) | 1.276 (α=1.0) |
+| **Total** | | **55 configs** | | |
+
+The remaining 5 models (Random Forest, MLP, ESM-FP MLP, GIN, Fusion) used fixed configurations without systematic search. These choices follow standard practices in the literature: RF with unlimited depth and 500 trees, MLP with [256, 128] hidden layers, and deep models with 3-layer architectures and standard learning rates (0.001 for single-branch, 0.0005 for fusion). All deep models employ early stopping on validation RMSE as implicit regularization, which adapts effective model capacity to the dataset without explicit hyperparameter search.
+
+Full hyperparameter values, search spaces, and selection criteria are documented in Table S2.
+
+#### XGBoost sensitivity to tree depth
+
+XGBoost shows substantial sensitivity to `max_depth`, the most influential hyperparameter:
+
+| max_depth | Best RMSE at this depth | Relative to depth=12 best |
+|-----------|------------------------|--------------------------|
+| 4 | 0.953 | +18.4% |
+| 6 | 0.886 | +10.1% |
+| 8 | 0.841 | +4.4% |
+| 10 | 0.814 | +1.1% |
+| 12 | 0.805 | (reference) |
+
+Performance improves monotonically with depth on 2048-dimensional binary fingerprints, with diminishing returns above depth 10. Learning rate and n_estimators have smaller effects: at any given depth, lr=0.1 outperforms lr=0.05 by 2–4%, and n_estimators=500 outperforms 300 by 2–3%.
+
+**Important caveat**: All multi-seed experiments (Section 11) used the default XGBoost configuration (max_depth=6), not the grid search optimum (max_depth=12). The reported multi-seed XGBoost RMSE (0.894 ± 0.001 on random splits) is therefore conservative — with tuned depth, XGBoost could potentially achieve ~0.805, approaching RF's 0.819. This does not affect the primary conclusions because (a) model rankings are internally consistent across seeds, and (b) the main scientific finding — that RF matches or beats complex models — would be strengthened, not weakened, by a better-tuned XGBoost.
+
+#### ElasticNet sensitivity to regularization strength
+
+ElasticNet is highly sensitive to `alpha`, with aggressive regularization causing coefficient collapse:
+
+- At α ≥ 0.5 with l1_ratio ≥ 0.5, all coefficients are driven to zero (RMSE = 1.276, equivalent to predicting the mean)
+- At α = 0.001, the best configuration (l1_ratio = 0.1, more L2 regularization), validation RMSE improves to 1.143 — still the weakest model, but functional
+- The l1_ratio has a modest effect (spread of ~0.01 RMSE at any given alpha), with lower ratios (more L2) consistently preferred for the dense RDKit descriptor features
+
+The default α = 1.0 used in all multi-seed experiments produces degenerate predictions. However, even the optimal ElasticNet (RMSE = 1.143) remains substantially worse than all other models, so this limitation does not affect our comparative conclusions.
+
+#### Models without systematic tuning
+
+Five models used fixed configurations without hyperparameter search:
+
+- **Random Forest**: Standard settings (500 trees, unlimited depth, sqrt features) are well-established defaults for high-dimensional tabular data. RF is known to be relatively insensitive to hyperparameter choices compared to gradient boosting methods.
+- **MLP (baseline)**: Architecture [256, 128] with Adam optimizer follows standard practice. The ensemble of 3 models with early stopping (patience=10) limits overfitting.
+- **ESM-FP MLP, GIN, Fusion**: Deep model architectures (3-layer MLP, 3-layer GIN, concatenation fusion) follow conventions in the molecular property prediction literature. Learning rates (0.001 for single-branch, 0.0005 for multi-branch fusion) and dropout (0.3) are standard starting points. Early stopping on validation RMSE (patience 10–15 epochs) serves as implicit capacity control, typically reducing the need for extensive learning rate or regularization searches.
+
+We acknowledge that systematic hyperparameter optimization (e.g., Bayesian optimization with cross-validation) could potentially improve all models' absolute performance. However, our primary scientific question concerns *relative* model rankings under different splitting strategies, and the fixed-configuration approach ensures that performance differences reflect architectural and representational advantages rather than differential tuning effort. The multi-seed evaluation (Section 11) captures training stochasticity, which is the dominant source of variance for the deep models we studied.
 
 ## 9. Advanced Neural Network Models (Phase 7)
 

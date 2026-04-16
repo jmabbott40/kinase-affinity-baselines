@@ -1,29 +1,33 @@
-model,parameter,search_space,selected,criterion
-Random Forest,n_estimators,500 (fixed),500,N/A
-Random Forest,max_depth,None (fixed),None (unlimited),N/A
-Random Forest,max_features,sqrt (fixed),sqrt,N/A
-Random Forest,min_samples_leaf,2 (fixed),2,N/A
-XGBoost,max_depth,"[4, 6, 8, 10, 12]",TBD*,Val RMSE
-XGBoost,learning_rate,"[0.05, 0.1]",TBD*,Val RMSE
-XGBoost,n_estimators,"[300, 500]",TBD*,Val RMSE
-XGBoost,subsample,0.8 (fixed),0.8,N/A
-XGBoost,colsample_bytree,0.8 (fixed),0.8,N/A
-ElasticNet,alpha,"[0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0]",TBD*,Val RMSE
-ElasticNet,l1_ratio,"[0.1, 0.3, 0.5, 0.7, 0.9]",TBD*,Val RMSE
-ElasticNet,max_iter,10000 (fixed),10000,N/A
-MLP (baseline),hidden_layers,"[256, 128] (fixed)","[256, 128]",N/A
-MLP (baseline),n_ensemble,3 (fixed),3,N/A
-MLP (baseline),max_iter,200 (fixed),200,N/A
-ESM-FP MLP,hidden_dims,"[512, 256, 128] (fixed)","[512, 256, 128]",N/A
-ESM-FP MLP,dropout,0.3 (fixed),0.3,N/A
-ESM-FP MLP,learning_rate,0.001 (fixed),0.001,N/A
-ESM-FP MLP,batch_size,1024 (fixed),1024,N/A
-ESM-FP MLP,max_epochs,100 (fixed),100,Early stop (patience=10)
-GIN,gnn_layers,3 (fixed),3,N/A
-GIN,hidden_dim,128 (fixed),128,N/A
-GIN,dropout,0.3 (fixed),0.3,N/A
-GIN,learning_rate,0.001 (fixed),0.001,N/A
-Fusion,gnn_layers,3 (fixed),3,N/A
-Fusion,protein_projection_dim,256 (fixed),256,N/A
-Fusion,learning_rate,0.0005 (fixed),0.0005,N/A
-Fusion,max_epochs,100 (fixed),100,Early stop (patience=15)
+model,parameter,search_space,selected,criterion,notes
+Random Forest,n_estimators,500 (fixed),500,Fixed config,Standard choice; not tuned
+Random Forest,max_depth,None (fixed),None (unlimited),Fixed config,Unlimited depth on 2048-dim binary FP
+Random Forest,max_features,sqrt (fixed),sqrt,Fixed config,Standard for high-dimensional features
+Random Forest,min_samples_leaf,2 (fixed),2,Fixed config,
+XGBoost,max_depth,"[4, 6, 8, 10, 12]",6,Config default,"Grid search best=12 (val RMSE=0.805 vs 0.886 at depth 6); default used in all multi-seed experiments"
+XGBoost,learning_rate,"[0.05, 0.1]",0.1,Config default,"Grid search best=0.1; consistent across depths"
+XGBoost,n_estimators,"[300, 500]",500,Config default,"Grid search best=500; more trees consistently better"
+XGBoost,subsample,0.8 (fixed),0.8,Fixed config,
+XGBoost,colsample_bytree,0.8 (fixed),0.8,Fixed config,
+XGBoost,min_child_weight,3 (fixed),3,Fixed config,
+ElasticNet,alpha,"[0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0]",1.0,Config default,"Grid search best=0.001 (val RMSE=1.143 vs 1.276 at alpha=1.0); default used in all multi-seed experiments"
+ElasticNet,l1_ratio,"[0.1, 0.3, 0.5, 0.7, 0.9]",0.5,Config default,"Grid search best=0.1; lower ratio (more L2) preferred"
+ElasticNet,max_iter,10000 (fixed),10000,Fixed config,
+MLP (baseline),hidden_layers,"[256, 128] (fixed)","[256, 128]",Fixed config,Standard 2-layer architecture
+MLP (baseline),n_ensemble,3 (fixed),3,Fixed config,Ensemble of 3 for uncertainty
+MLP (baseline),activation,relu (fixed),relu,Fixed config,
+MLP (baseline),learning_rate_init,0.001 (fixed),0.001,Fixed config,
+MLP (baseline),max_iter,200 (fixed),200,Fixed config,With early stopping (patience=10)
+ESM-FP MLP,hidden_dims,"[512, 256, 128] (fixed)","[512, 256, 128]",Fixed config,Standard 3-layer architecture
+ESM-FP MLP,dropout,0.3 (fixed),0.3,Fixed config,Applied after each hidden layer
+ESM-FP MLP,learning_rate,0.001 (fixed),0.001,Fixed config,AdamW with cosine annealing
+ESM-FP MLP,batch_size,1024 (fixed),1024,Fixed config,
+ESM-FP MLP,max_epochs,100 (fixed),100,Early stopping,Patience=10 on val RMSE
+GIN,num_layers,3 (fixed),3,Fixed config,Standard for molecular GNNs
+GIN,hidden_dim,128 (fixed),128,Fixed config,
+GIN,dropout,0.3 (fixed),0.3,Fixed config,
+GIN,learning_rate,0.001 (fixed),0.001,Fixed config,AdamW with cosine annealing
+GIN,max_epochs,100 (fixed),100,Early stopping,Patience=15 on val RMSE
+Fusion,gnn_layers,3 (fixed),3,Fixed config,Same GIN architecture as standalone
+Fusion,protein_projection_dim,256 (fixed),256,Fixed config,ESM-2 1280-dim projected to 256
+Fusion,learning_rate,0.0005 (fixed),0.0005,Fixed config,Lower than GIN for stability
+Fusion,max_epochs,100 (fixed),100,Early stopping,Patience=15 on val RMSE
