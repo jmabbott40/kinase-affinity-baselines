@@ -6,12 +6,12 @@ Curated protein kinase binding affinity dataset from ChEMBL for benchmarking ML 
 
 | Property | Value |
 |----------|-------|
-| Source | ChEMBL (version TBD) |
+| Source | ChEMBL 36 |
 | Target family | Protein kinases (Homo sapiens) |
 | Activity types | IC50, Ki, Kd |
 | Response variable | pActivity (−log₁₀ M) |
 | Dataset version | v1 |
-| Creation date | TBD |
+| Creation date | March 2026 |
 
 ## Inclusion Criteria
 

@@ -16,7 +16,7 @@ In the ML-for-drug-discovery literature, reported metrics are frequently inflate
 
 ## 2. Dataset Construction
 
-We constructed a curated kinase bioactivity dataset from ChEMBL, starting from all binding affinity measurements (IC50, Ki, Kd) for human protein kinase targets. The full curation pipeline is config-driven (`configs/dataset_v1.yaml`) and documented in `docs/data_card.md`.
+We constructed a curated kinase bioactivity dataset from ChEMBL 36, starting from all binding affinity measurements (IC50, Ki, Kd) for human protein kinase targets. The full curation pipeline is config-driven (`configs/dataset_v1.yaml`) and documented in `docs/data_card.md`.
 
 ### 2.1 Data sourcing
 
