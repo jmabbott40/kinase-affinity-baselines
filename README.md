@@ -2,6 +2,8 @@
 
 **When do complex, structure-aware ML models outperform simple cheminformatics baselines for kinase inhibitor binding affinity prediction?**
 
+Preprint Found Here: https://www.biorxiv.org/content/10.64898/2026.04.20.719590v1
+
 ## Experimental Context and Overview
 
 Published ML models for protein–ligand affinity prediction often report impressive performance, but evaluations frequently rely on random train/test splits that allow data leakage through structural analogs. This project systematically evaluates whether protein-aware and structure-based models provide genuine improvements over simple cheminformatics baselines, using:
