@@ -241,6 +241,8 @@ The audit produces a report answering:
 - 60-80% pass → **proceed but flag in paper as a limitation**
 - <60% pass → **pivot to EC50 inclusion with `assay_type` flagging, with sub-analysis on binding-only subset**
 
+**Note:** The 60% threshold above triggers a *protocol pivot* (EC50 inclusion). Section 7.4 stop condition #2 (`<30 viable targets total`) is a distinct, more severe failure mode that triggers a *project halt* rather than a pivot. The two thresholds describe different decisions on the same audit output.
+
 ### 4.5 Subfamily structure for target-held-out splits
 
 Five aminergic families form natural subfamily groups for target splits:
