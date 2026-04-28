@@ -115,13 +115,22 @@ kinase-affinity-baselines/
 - Create: `scripts/aminergic_audit/run_audit.py`
 - Create: `tests/test_aminergic_targets.py`
 - Output: `results/aminergic_audit/audit_report.md`
+- Output: `results/aminergic_audit/audit_decision.json`
 - Output: `results/aminergic_audit/figures/per_target_record_counts.png`
+
+**⚠️ EXECUTION GATE — MUST NOT BE BYPASSED:**
+After this task completes, the executing agent **MUST** present the `audit_decision.json` content to the user and obtain explicit confirmation before proceeding to Task 2.
+- If `decision == "HALT"` (fewer than 30 viable targets): **stop the entire plan**; surface to user for design review.
+- If `decision == "OPTION_B_PIVOT"` (<60% pass threshold): **pause** Plans 2 and 3; consult user — Plan 2 will need restructuring for EC50 inclusion.
+- If `decision in {"OPTION_A", "OPTION_A_FLAGGED"}`: **proceed** to Task 2.
 
 **Why first:** This audit determines whether Phase 1 proceeds with binding-only data (Option A from spec Section 4.4) or pivots to EC50 inclusion. Running it first means we know early — before any library refactoring — whether the protocol holds.
 
 **This is a standalone script** that uses existing `kinase_affinity.data` modules (which are class-agnostic). No library extraction needed yet.
 
-- [ ] **Step 1: Write target list as Python module**
+- [ ] **Step 1: Write target list as Python module with API-driven ID resolution**
+
+**Important context:** ChEMBL target IDs cannot be reliably listed offline — they need verification against the live ChEMBL API. Instead of hardcoding placeholder IDs that may collide or be wrong, this module defines targets by *gene symbol* and resolves to ChEMBL IDs at runtime via API lookup.
 
 Create `scripts/aminergic_audit/target_lists.py`:
 
@@ -134,94 +143,126 @@ Source: GPCRdb (https://gpcrdb.org/), filtered to:
 - Human (Homo sapiens)
 - Excludes 5-HT3 (ionotropic, not GPCR)
 
-ChEMBL target IDs verified against ChEMBL 36.
+ChEMBL target IDs are resolved at runtime via the ChEMBL API to avoid
+stale/incorrect hardcoded values. Use `resolve_chembl_ids()` to fetch
+the verified mapping from gene_symbol → ChEMBL ID.
 """
+from typing import Optional
 
-AMINERGIC_TARGETS = {
-    "dopamine": {
-        "DRD1": "CHEMBL2056",
-        "DRD2": "CHEMBL217",
-        "DRD3": "CHEMBL234",
-        "DRD4": "CHEMBL219",
-        "DRD5": "CHEMBL1850",
-    },
-    "serotonin": {
-        "5-HT1A": "CHEMBL214",
-        "5-HT1B": "CHEMBL1898",
-        "5-HT1D": "CHEMBL1983",
-        "5-HT1E": "CHEMBL3371",
-        "5-HT1F": "CHEMBL1850",
-        "5-HT2A": "CHEMBL224",
-        "5-HT2B": "CHEMBL1833",
-        "5-HT2C": "CHEMBL225",
-        "5-HT4": "CHEMBL1875",
-        "5-HT5A": "CHEMBL3426",
-        "5-HT6": "CHEMBL3371",
-        "5-HT7": "CHEMBL3155",
-    },
-    "adrenergic": {
-        "ADRA1A": "CHEMBL229",
-        "ADRA1B": "CHEMBL1867",
-        "ADRA1D": "CHEMBL223",
-        "ADRA2A": "CHEMBL1867",
-        "ADRA2B": "CHEMBL1942",
-        "ADRA2C": "CHEMBL1916",
-        "ADRB1": "CHEMBL213",
-        "ADRB2": "CHEMBL210",
-        "ADRB3": "CHEMBL246",
-    },
-    "histamine": {
-        "HRH1": "CHEMBL231",
-        "HRH2": "CHEMBL1941",
-        "HRH3": "CHEMBL264",
-        "HRH4": "CHEMBL3759",
-    },
-    "muscarinic": {
-        "CHRM1": "CHEMBL216",
-        "CHRM2": "CHEMBL211",
-        "CHRM3": "CHEMBL245",
-        "CHRM4": "CHEMBL1821",
-        "CHRM5": "CHEMBL2035",
-    },
-    "trace_amine": {
-        # Optional: include only if ≥1000 binding records (audit decides)
-        "TAAR1": "CHEMBL2095203",
-    },
+# Targets defined by official gene symbol (HGNC) — class-agnostic, verifiable
+AMINERGIC_TARGETS_BY_FAMILY = {
+    "dopamine": ["DRD1", "DRD2", "DRD3", "DRD4", "DRD5"],
+    "serotonin": [
+        "HTR1A", "HTR1B", "HTR1D", "HTR1E", "HTR1F",
+        "HTR2A", "HTR2B", "HTR2C",
+        "HTR4", "HTR5A", "HTR6", "HTR7",
+        # Note: HTR3A/HTR3B/HTR3C/HTR3D/HTR3E excluded (ionotropic)
+    ],
+    "adrenergic": [
+        "ADRA1A", "ADRA1B", "ADRA1D",
+        "ADRA2A", "ADRA2B", "ADRA2C",
+        "ADRB1", "ADRB2", "ADRB3",
+    ],
+    "histamine": ["HRH1", "HRH2", "HRH3", "HRH4"],
+    "muscarinic": ["CHRM1", "CHRM2", "CHRM3", "CHRM4", "CHRM5"],
+    "trace_amine": ["TAAR1"],  # Optional: include only if ≥1000 binding records
 }
 
 
-def get_all_target_ids(include_taar: bool = True) -> list[str]:
-    """Return flat list of all aminergic target ChEMBL IDs."""
+def get_all_gene_symbols(include_taar: bool = True) -> list[str]:
+    """Return flat list of all aminergic gene symbols."""
     targets = []
-    for family, members in AMINERGIC_TARGETS.items():
+    for family, members in AMINERGIC_TARGETS_BY_FAMILY.items():
         if family == "trace_amine" and not include_taar:
             continue
-        targets.extend(members.values())
+        targets.extend(members)
     return targets
 
 
-def get_target_to_family() -> dict[str, str]:
-    """Return mapping of ChEMBL ID → family name."""
+def get_gene_to_family() -> dict[str, str]:
+    """Return mapping of gene_symbol → family name."""
     mapping = {}
-    for family, members in AMINERGIC_TARGETS.items():
-        for chembl_id in members.values():
-            mapping[chembl_id] = family
+    for family, members in AMINERGIC_TARGETS_BY_FAMILY.items():
+        for gene in members:
+            mapping[gene] = family
     return mapping
+
+
+def resolve_chembl_ids(gene_symbols: Optional[list[str]] = None) -> dict[str, str]:
+    """Resolve gene symbols to ChEMBL target IDs via API.
+
+    Returns a dict mapping gene_symbol → chembl_id. Targets that fail to
+    resolve are reported in stderr and excluded from the result.
+
+    Requires: `chembl_webresource_client` installed.
+    Network: Makes ChEMBL API calls; cache results when possible.
+    """
+    import sys
+    from chembl_webresource_client.new_client import new_client
+
+    if gene_symbols is None:
+        gene_symbols = get_all_gene_symbols(include_taar=True)
+
+    target_client = new_client.target
+    resolved = {}
+    failed = []
+
+    for gene in gene_symbols:
+        # Search for SINGLE PROTEIN targets in Homo sapiens
+        results = target_client.filter(
+            target_components__component_synonym=gene,
+            target_type="SINGLE PROTEIN",
+            organism="Homo sapiens",
+        ).only(["target_chembl_id", "pref_name", "target_components"])
+
+        # Take the first match with the gene as the primary symbol
+        chembl_id = None
+        for result in results:
+            for component in result.get("target_components", []):
+                synonyms = component.get("target_component_synonyms", [])
+                gene_match = any(
+                    s.get("component_synonym") == gene
+                    and s.get("syn_type") == "GENE_SYMBOL"
+                    for s in synonyms
+                )
+                if gene_match:
+                    chembl_id = result["target_chembl_id"]
+                    break
+            if chembl_id:
+                break
+
+        if chembl_id:
+            resolved[gene] = chembl_id
+        else:
+            failed.append(gene)
+            print(f"WARN: could not resolve {gene} to a ChEMBL ID", file=sys.stderr)
+
+    if failed:
+        print(f"\nResolution summary: {len(resolved)} succeeded, {len(failed)} failed",
+              file=sys.stderr)
+        print(f"Failed: {failed}", file=sys.stderr)
+
+    return resolved
 ```
 
-**NOTE:** ChEMBL IDs above are placeholders requiring verification. The audit script will verify each ID exists in ChEMBL 36 and report any mismatches.
+**Why this approach:** Defining targets by gene symbol makes the module verifiable (HGNC gene symbols are stable, public, and unambiguous) and shifts ChEMBL ID resolution to runtime where it can be validated. Avoids the placeholder-collision problem that hardcoded IDs would create.
 
 - [ ] **Step 2: Write test for target list module**
 
 Create `tests/test_aminergic_targets.py`:
 
 ```python
-"""Tests for aminergic target list module."""
+"""Tests for aminergic target list module.
+
+Tests cover offline data structures (gene symbols, family mappings).
+ChEMBL API resolution is tested separately as an integration test
+(network-dependent, marked 'slow').
+"""
 import pytest
 from scripts.aminergic_audit.target_lists import (
-    AMINERGIC_TARGETS,
-    get_all_target_ids,
-    get_target_to_family,
+    AMINERGIC_TARGETS_BY_FAMILY,
+    get_all_gene_symbols,
+    get_gene_to_family,
 )
 
 
@@ -229,36 +270,51 @@ def test_target_families_are_complete():
     """All five aminergic families plus optional trace_amine."""
     expected_families = {"dopamine", "serotonin", "adrenergic",
                          "histamine", "muscarinic", "trace_amine"}
-    assert set(AMINERGIC_TARGETS.keys()) == expected_families
+    assert set(AMINERGIC_TARGETS_BY_FAMILY.keys()) == expected_families
 
 
-def test_all_target_ids_are_unique():
-    ids = get_all_target_ids(include_taar=True)
-    assert len(ids) == len(set(ids))
+def test_all_gene_symbols_are_unique():
+    """No duplicate gene symbols across families."""
+    genes = get_all_gene_symbols(include_taar=True)
+    assert len(genes) == len(set(genes)), \
+        f"Duplicates found: {[g for g in set(genes) if genes.count(g) > 1]}"
 
 
-def test_target_to_family_inverse_consistent():
-    mapping = get_target_to_family()
-    for family, members in AMINERGIC_TARGETS.items():
-        for chembl_id in members.values():
-            assert mapping[chembl_id] == family
+def test_gene_to_family_inverse_consistent():
+    """Inverse mapping is consistent with forward mapping."""
+    mapping = get_gene_to_family()
+    for family, members in AMINERGIC_TARGETS_BY_FAMILY.items():
+        for gene in members:
+            assert mapping[gene] == family
 
 
-def test_chembl_ids_match_format():
-    """All ChEMBL IDs are well-formed."""
-    for ids in [v for family in AMINERGIC_TARGETS.values()
-                for v in family.values()]:
-        assert ids.startswith("CHEMBL")
-        assert ids[6:].isdigit()
+def test_gene_symbols_match_hgnc_format():
+    """Gene symbols follow HGNC conventions: uppercase letters/digits, no special chars."""
+    import re
+    pattern = re.compile(r"^[A-Z0-9]+$")
+    for genes in [v for v in AMINERGIC_TARGETS_BY_FAMILY.values()]:
+        for gene in genes:
+            assert pattern.match(gene), f"Invalid gene symbol: {gene}"
 
 
 def test_exclude_taar_option():
     """include_taar=False excludes TAAR1."""
-    with_taar = set(get_all_target_ids(include_taar=True))
-    without_taar = set(get_all_target_ids(include_taar=False))
+    with_taar = set(get_all_gene_symbols(include_taar=True))
+    without_taar = set(get_all_gene_symbols(include_taar=False))
     excluded = with_taar - without_taar
-    assert excluded == {"CHEMBL2095203"}
+    assert excluded == {"TAAR1"}
+
+
+def test_expected_target_count():
+    """We have ~35 targets (without TAAR), ~36 with."""
+    n_without_taar = len(get_all_gene_symbols(include_taar=False))
+    n_with_taar = len(get_all_gene_symbols(include_taar=True))
+    # Documented in spec: ~35-40 targets
+    assert 30 <= n_without_taar <= 40
+    assert n_with_taar == n_without_taar + 1
 ```
+
+**Note:** The earlier `test_chembl_ids_match_format` test is replaced with `test_gene_symbols_match_hgnc_format` — gene symbols are the verifiable source-of-truth; ChEMBL IDs are resolved at runtime.
 
 - [ ] **Step 3: Run test to verify it passes**
 
@@ -289,7 +345,10 @@ import pandas as pd
 from chembl_webresource_client.new_client import new_client
 
 from scripts.aminergic_audit.target_lists import (
-    AMINERGIC_TARGETS, get_all_target_ids, get_target_to_family,
+    AMINERGIC_TARGETS_BY_FAMILY,
+    get_all_gene_symbols,
+    get_gene_to_family,
+    resolve_chembl_ids,
 )
 
 OUTPUT_DIR = Path("results/aminergic_audit")
@@ -333,28 +392,45 @@ def query_target_records(target_chembl_id: str) -> dict:
 
 def run_audit():
     """Execute the audit and write report."""
-    print(f"Auditing {len(get_all_target_ids())} aminergic targets...")
-    target_to_family = get_target_to_family()
+    print(f"Resolving ChEMBL IDs for {len(get_all_gene_symbols())} aminergic targets...")
+    gene_to_chembl = resolve_chembl_ids(get_all_gene_symbols(include_taar=True))
+    print(f"Resolved {len(gene_to_chembl)} of {len(get_all_gene_symbols())} targets.\n")
+
+    gene_to_family = get_gene_to_family()
     results = []
 
-    for chembl_id in get_all_target_ids(include_taar=True):
+    for gene, chembl_id in gene_to_chembl.items():
         try:
             stats = query_target_records(chembl_id)
-            stats["family"] = target_to_family[chembl_id]
+            stats["gene_symbol"] = gene
+            stats["family"] = gene_to_family[gene]
             stats["passes_threshold"] = stats["n_binding_records"] >= THRESHOLD_BINDING_RECORDS
             results.append(stats)
-            print(f"  {chembl_id} ({stats['family']}): "
+            print(f"  {gene} ({chembl_id}, {stats['family']}): "
                   f"{stats['n_binding_records']} records, "
                   f"{stats['n_unique_compounds']} compounds")
         except Exception as e:
-            print(f"  {chembl_id}: ERROR — {e}")
+            print(f"  {gene} ({chembl_id}): ERROR — {e}")
             results.append({
+                "gene_symbol": gene,
                 "target_chembl_id": chembl_id,
-                "family": target_to_family[chembl_id],
+                "family": gene_to_family[gene],
                 "n_binding_records": 0,
                 "error": str(e),
                 "passes_threshold": False,
             })
+
+    # Capture targets that failed to resolve to ChEMBL IDs
+    unresolved = set(get_all_gene_symbols()) - set(gene_to_chembl.keys())
+    for gene in unresolved:
+        results.append({
+            "gene_symbol": gene,
+            "target_chembl_id": None,
+            "family": gene_to_family[gene],
+            "n_binding_records": 0,
+            "error": "Failed to resolve ChEMBL ID",
+            "passes_threshold": False,
+        })
 
     df = pd.DataFrame(results)
     df.to_csv(OUTPUT_DIR / "per_target_audit.csv", index=False)
@@ -1290,45 +1366,105 @@ implemented in v1.1.0."
 
 **Strategy:** Save expected kinase metrics from preprint v1 as a JSON fixture. The integration test runs a *small* subset (e.g., RF on random split with seed=42) and checks the output matches.
 
-- [ ] **Step 1: Extract reference kinase metrics from preprint v1**
+- [ ] **Step 1: Extract reference kinase metrics from preprint v1 prediction files**
 
-Create reference fixture by reading existing kinase results:
+**Important:** `multi_seed_aggregated.csv` only stores aggregates (mean/std/min/max across seeds), not per-seed values. Per-seed metrics for RF/XGBoost/etc. baselines are not separately stored.
+
+The reliable way to obtain seed=42's exact reference RMSE is to **recompute it from the saved prediction NPZ file**, which contains the actual y_true/y_pred from preprint v1's seed=42 run. This gives bit-exact reference values.
+
+Create `scripts/extract_reference_metrics.py`:
 
 ```python
-# scripts/extract_reference_metrics.py
+"""Extract per-seed reference metrics from preprint v1 prediction files.
+
+Recomputes RMSE/R²/etc. from saved (y_true, y_pred) arrays in
+results/predictions/. These values are the bit-exact reference for
+the integration test in tests/integration/test_kinase_reproducibility.py.
+"""
 import json
+import numpy as np
 import pandas as pd
 from pathlib import Path
+from sklearn.metrics import mean_squared_error, r2_score
+from scipy.stats import pearsonr
 
-# Read multi-seed aggregated results from kinase preprint v1
-df = pd.read_csv(
-    Path("/Users/joshuaabbott/mlproject/results/tables/multi_seed_aggregated.csv")
-)
+KINASE_REPO = Path("/Users/joshuaabbott/mlproject")
+PRED_DIR = KINASE_REPO / "results" / "predictions"
+OUTPUT = KINASE_REPO / "tests" / "integration" / "kinase_v1_reference.json"
 
-# Filter to RF + random split + RMSE (smoke test target)
-ref = df[
-    (df["model"] == "random_forest")
-    & (df["split"] == "random")
-    & (df["metric"] == "rmse")
-].iloc[0]
+# Smoke test reference: RF on random split (fastest model × split combination)
+SMOKE_TEST_MODEL = "random_forest"
+SMOKE_TEST_SPLIT = "random"
 
-reference = {
-    "kinase_v1_rf_random_rmse_seed42": ref["min"],   # seed=42 is one of the 5 seeds
-    "kinase_v1_rf_random_rmse_mean": ref["mean"],
-    "kinase_v1_rf_random_rmse_std": ref["std"],
-    "tolerance": 0.001,  # ±1e-3 RMSE difference allowed (floating-point noise)
-}
 
-out = Path("tests/integration/kinase_v1_reference.json")
-out.parent.mkdir(parents=True, exist_ok=True)
-with open(out, "w") as f:
-    json.dump(reference, f, indent=2)
+def compute_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
+    """Recompute regression metrics from saved arrays."""
+    rmse = float(np.sqrt(mean_squared_error(y_true, y_pred)))
+    r2 = float(r2_score(y_true, y_pred))
+    pearson_r, _ = pearsonr(y_true, y_pred)
+    return {
+        "rmse": rmse,
+        "r2": r2,
+        "pearson_r": float(pearson_r),
+    }
 
-print(f"Reference metrics saved: {reference}")
+
+def extract_reference():
+    """Load preprint v1 predictions for RF random and recompute reference metrics."""
+    pred_file = PRED_DIR / f"{SMOKE_TEST_MODEL}_{SMOKE_TEST_SPLIT}.npz"
+    assert pred_file.exists(), f"Missing reference predictions: {pred_file}"
+
+    d = np.load(pred_file)
+
+    # Try alternate key conventions used in the kinase repo
+    y_true_keys = ["y_test_true", "y_true"]
+    y_pred_keys = ["y_test_pred", "y_test_mean", "y_pred"]
+
+    y_true = next((d[k] for k in y_true_keys if k in d), None)
+    y_pred = next((d[k] for k in y_pred_keys if k in d), None)
+
+    assert y_true is not None and y_pred is not None, (
+        f"Could not find y_true/y_pred in {pred_file}. Keys: {list(d.keys())}"
+    )
+
+    metrics = compute_metrics(y_true, y_pred)
+    print(f"Reference metrics from {pred_file.name}:")
+    for k, v in metrics.items():
+        print(f"  {k}: {v:.6f}")
+
+    # Note: this file's predictions correspond to whatever seed produced them in the
+    # original training run. Phase 4 was likely seed=42 (default). If multi-seed runs
+    # overwrote with the *last* seed (1024), check the file modification date and
+    # cross-reference against logs.
+    reference = {
+        "model": SMOKE_TEST_MODEL,
+        "split": SMOKE_TEST_SPLIT,
+        "predictions_file": str(pred_file.relative_to(KINASE_REPO)),
+        "n_test_samples": int(len(y_true)),
+        "metrics": metrics,
+        "tolerance": {
+            "rmse": 0.001,    # ±1e-3 (floating-point noise)
+            "r2": 0.005,      # ±5e-3 (looser for derived metrics)
+            "pearson_r": 0.005,
+        },
+    }
+
+    OUTPUT.parent.mkdir(parents=True, exist_ok=True)
+    with open(OUTPUT, "w") as f:
+        json.dump(reference, f, indent=2)
+
+    print(f"\nReference saved to: {OUTPUT}")
+    return reference
+
+
+if __name__ == "__main__":
+    extract_reference()
 ```
 
 Run: `python scripts/extract_reference_metrics.py`
-Expected: writes `tests/integration/kinase_v1_reference.json`
+Expected: prints reference metrics, writes `tests/integration/kinase_v1_reference.json`
+
+**If the reference predictions file does not exist** (e.g., if `random_forest_random.npz` was deleted): use a different model+split combination that does exist (check `ls results/predictions/`). Update `SMOKE_TEST_MODEL` and `SMOKE_TEST_SPLIT` accordingly.
 
 - [ ] **Step 2: Write integration test for RF on kinase random split**
 
@@ -1341,6 +1477,9 @@ matches preprint v1 numerical output within tolerance.
 This is the validation gate for the library refactor. Failure here
 indicates the refactor changed numerical behavior — investigate and
 fix before proceeding to Plan 2 (GPCR work).
+
+Reference values come from recomputing metrics on saved preprint v1
+prediction NPZ files (see scripts/extract_reference_metrics.py).
 """
 import json
 import pytest
@@ -1354,34 +1493,55 @@ KINASE_REPO = Path("/Users/joshuaabbott/mlproject")
 
 
 @pytest.fixture(scope="session")
-def reference_metrics():
+def reference():
+    """Load the v1 reference fixture (recomputed from saved predictions)."""
+    if not REFERENCE_PATH.exists():
+        pytest.skip(
+            f"Reference file missing: {REFERENCE_PATH}. "
+            "Run scripts/extract_reference_metrics.py first."
+        )
     with open(REFERENCE_PATH) as f:
         return json.load(f)
 
 
 @pytest.mark.slow  # marker for ~2-5 minute test
-def test_rf_random_seed42_matches_preprint_v1(reference_metrics):
-    """RF on random split with seed=42 reproduces preprint v1 RMSE."""
+def test_rf_random_matches_preprint_v1(reference):
+    """RF on random split reproduces preprint v1 metrics within tolerance.
+
+    The seed used for the reference predictions is whatever seed produced
+    the saved NPZ file (typically the last multi-seed run, often 1024).
+    The library re-run uses the same seed default (loaded from config).
+    """
     config_path = KINASE_REPO / "configs" / "rf_baseline.yaml"
     dataset_dir = KINASE_REPO / "data" / "processed" / "v1"
 
     result = train_and_evaluate(
         config_path=str(config_path),
-        split_strategy="random",
+        split_strategy=reference["split"],
         dataset_version="v1",
         dataset_dir=str(dataset_dir),
-        seed=42,
     )
 
-    rmse = result["test_metrics"]["rmse"]
-    expected = reference_metrics["kinase_v1_rf_random_rmse_seed42"]
-    tolerance = reference_metrics["tolerance"]
+    actual = result["test_metrics"]
+    expected = reference["metrics"]
+    tolerance = reference["tolerance"]
 
-    assert abs(rmse - expected) <= tolerance, (
-        f"RF random seed=42 RMSE diverged: got {rmse:.6f}, "
-        f"expected {expected:.6f} ± {tolerance}"
+    failures = []
+    for metric in ["rmse", "r2", "pearson_r"]:
+        diff = abs(actual[metric] - expected[metric])
+        if diff > tolerance[metric]:
+            failures.append(
+                f"  {metric}: got {actual[metric]:.6f}, "
+                f"expected {expected[metric]:.6f}, diff={diff:.6f} "
+                f"> tolerance {tolerance[metric]}"
+            )
+
+    assert not failures, (
+        f"\nRF random reference mismatch:\n" + "\n".join(failures)
     )
 ```
+
+**Note on seed handling:** The reference NPZ predictions correspond to whichever seed was used during preprint v1 training (typically the last multi-seed run). The integration test uses the trainer's default seed loading from config to match. If the preprint v1 used multi-seed averaging (mean of 5 predictions), the integration test should be updated accordingly — verify by inspecting the prediction file's content layout.
 
 - [ ] **Step 3: Add `slow` marker to pytest config**
 
@@ -1462,6 +1622,8 @@ Pass = library refactor preserved numerical behavior."
 **Files:**
 - Modify: `src/target_affinity_ml/__init__.py` (verify version)
 - Modify: `CHANGELOG.md` (move Unreleased → 1.0.0 section)
+
+**⚠️ Prerequisite for Step 6 (push):** The user must create an empty repository at `https://github.com/jmabbott40/target-affinity-ml` *before* this task's push step. If the GitHub repo does not exist, Step 6 will fail. The executing agent should verify this prerequisite before attempting the push, and pause to confirm with the user if the repo doesn't exist yet.
 
 - [ ] **Step 1: Update CHANGELOG**
 
@@ -1585,14 +1747,34 @@ from target_affinity_ml import data, features, models, training, evaluation, vis
 __all__ = ["data", "features", "models", "training", "evaluation", "visualization", "__version__"]
 ```
 
-- [ ] **Step 3: Delete migrated module directories**
+- [ ] **Step 3 (verify before deleting): Confirm backward-compatibility re-exports work**
+
+**Important:** The migrated submodules will be deleted in Step 4. Before deleting, verify the re-exports in `kinase_affinity/__init__.py` work — otherwise we delete code that's still being depended upon.
+
+```bash
+cd /Users/joshuaabbott/mlproject
+pip install -e /Users/joshuaabbott/target-affinity-ml  # ensure library is installed
+python -c "
+from kinase_affinity.models import RandomForestModel
+from kinase_affinity.data import random_split
+from kinase_affinity.features import compute_morgan_fp
+from kinase_affinity.evaluation import compute_regression_metrics
+print('All imports work via re-export')
+"
+```
+
+Expected: prints "All imports work via re-export". If any import fails, the re-export configuration in `kinase_affinity/__init__.py` is incomplete — fix before proceeding.
+
+- [ ] **Step 4: Delete migrated module directories**
+
+Now safe to delete (verified in Step 3 that re-exports work):
 
 ```bash
 cd /Users/joshuaabbott/mlproject/src/kinase_affinity
 rm -rf data/ features/ models/ training/ evaluation/ visualization/
 ```
 
-- [ ] **Step 4: Update README to add library extraction section**
+- [ ] **Step 5: Update README to add library extraction section**
 
 Edit `README.md` to add at top (above existing content):
 
@@ -1605,17 +1787,19 @@ Edit `README.md` to add at top (above existing content):
 > [`gpcr-aminergic-benchmarks`](https://github.com/jmabbott40/gpcr-aminergic-benchmarks).
 ```
 
-- [ ] **Step 5: Verify kinase repo still works with library**
+- [ ] **Step 6: Verify kinase repo still works with library after deletion**
 
 ```bash
 cd /Users/joshuaabbott/mlproject
-pip install -e .
+pip install -e .  # reinstall, now without internal modules — must work via library
 python -c "from kinase_affinity.models import RandomForestModel; print(RandomForestModel)"
 ```
 
-Expected: prints `<class 'target_affinity_ml.models.rf_model.RandomForestModel'>` (the alias works)
+Expected: prints `<class 'target_affinity_ml.models.rf_model.RandomForestModel'>`
 
-- [ ] **Step 6: Tag kinase repo v1.0**
+This is the post-deletion verification. If this fails, restore the deleted modules from git and debug the re-export configuration before re-attempting deletion.
+
+- [ ] **Step 7: Tag kinase repo v1.0**
 
 ```bash
 git add pyproject.toml src/kinase_affinity/__init__.py README.md
@@ -1646,6 +1830,10 @@ git push origin v1.0
 
 - [ ] **Step 1: Write re-run script**
 
+**Important:** `train_and_evaluate()` in `target_affinity_ml.training.trainer` already handles prediction saving internally — predictions are written to `results/models/{model}/{split}/predictions.npz` (or similar; verify exact path by inspecting the trainer module). This script's responsibility is *only* to invoke the trainer per (model, split, seed) and aggregate the returned metrics into a CSV. Predictions are saved as a side-effect.
+
+If the trainer does not save predictions in your library v1.0 build, the script must redirect output paths via the `output_dir` argument; see existing `scripts/run_phase5.py` in the kinase repo for the exact pattern.
+
 Create `scripts/rerun_kinase_v1.py`:
 
 ```python
@@ -1654,72 +1842,106 @@ Create `scripts/rerun_kinase_v1.py`:
 Uses identical seeds (42, 123, 456, 789, 1024) and identical configs.
 Output directory: results/kinase_v1_revalidation/
 
-Compares to preprint v1 numbers in results/tables/multi_seed_aggregated.csv.
+Compares to preprint v1 numbers in results/supplement_tables/S6_per_seed_metrics.csv
+(deep models) and recomputed-from-predictions baselines.
 Tolerance: ±0.001 RMSE per model × split per seed.
 """
-import json
 from pathlib import Path
 import pandas as pd
 
 from target_affinity_ml.training import train_and_evaluate
-from target_affinity_ml.evaluation.multi_seed import multi_seed_paired_test
 
-OUTPUT_DIR = Path("results/kinase_v1_revalidation")
+KINASE_REPO = Path("/Users/joshuaabbott/mlproject")
+OUTPUT_DIR = KINASE_REPO / "results" / "kinase_v1_revalidation"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+PRED_OUT_DIR = OUTPUT_DIR / "predictions"
+PRED_OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 MODELS = ["random_forest", "xgboost", "elasticnet", "mlp",
           "esm_fp_mlp", "gnn", "fusion"]
 SPLITS = ["random", "scaffold", "target"]
 SEEDS = [42, 123, 456, 789, 1024]
 
-CONFIGS_DIR = Path("configs")  # uses kinase repo configs (still present)
+CONFIGS_DIR = KINASE_REPO / "configs"
 DATASET_VERSION = "v1"
-DATASET_DIR = Path("data/processed/v1")
+DATASET_DIR = KINASE_REPO / "data" / "processed" / "v1"
+
+
+def config_path_for(model: str) -> Path:
+    """Resolve config path: baselines have _baseline suffix, deep models do not."""
+    if model in ("random_forest", "xgboost", "elasticnet", "mlp"):
+        return CONFIGS_DIR / f"{model}_baseline.yaml"
+    return CONFIGS_DIR / f"{model}.yaml"
 
 
 def run_kinase_v1():
-    results = []
-    for model in MODELS:
-        config_path = CONFIGS_DIR / f"{model}_baseline.yaml" if model in [
-            "random_forest", "xgboost", "elasticnet", "mlp"
-        ] else CONFIGS_DIR / f"{model}.yaml"
+    """Execute all 105 runs and write per-seed metrics CSV."""
+    rows = []
+    total_runs = len(MODELS) * len(SPLITS) * len(SEEDS)
+    run_idx = 0
 
+    for model in MODELS:
         for split in SPLITS:
             for seed in SEEDS:
-                print(f"Training {model} on {split} split with seed={seed}...")
+                run_idx += 1
+                print(f"[{run_idx}/{total_runs}] {model} | {split} | seed={seed}")
                 result = train_and_evaluate(
-                    config_path=str(config_path),
+                    config_path=str(config_path_for(model)),
                     split_strategy=split,
                     dataset_version=DATASET_VERSION,
                     dataset_dir=str(DATASET_DIR),
                     seed=seed,
+                    output_dir=str(PRED_OUT_DIR / f"{model}_{split}_seed{seed}"),
                 )
 
-                # Save predictions
-                pred_dir = OUTPUT_DIR / "predictions"
-                pred_dir.mkdir(parents=True, exist_ok=True)
-                # ... (save logic similar to existing trainer.py)
-
-                # Collect metrics
-                metrics_row = {
+                # train_and_evaluate already saves predictions (.npz) and a per-run
+                # metrics.json under output_dir. We aggregate the metrics here.
+                row = {
                     "model": model,
                     "split": split,
                     "seed": seed,
                     "test_rmse": result["test_metrics"]["rmse"],
+                    "test_mae": result["test_metrics"].get("mae", float("nan")),
                     "test_r2": result["test_metrics"]["r2"],
                     "test_pearson_r": result["test_metrics"]["pearson_r"],
-                    # ... etc
+                    "test_spearman_rho": result["test_metrics"].get("spearman_rho", float("nan")),
+                    "test_auroc": result["test_metrics"].get("auroc", float("nan")),
+                    "wallclock_seconds": result.get("wallclock_seconds", float("nan")),
                 }
-                results.append(metrics_row)
+                rows.append(row)
 
-    df = pd.DataFrame(results)
+    df = pd.DataFrame(rows)
     df.to_csv(OUTPUT_DIR / "all_seeds_metrics.csv", index=False)
-    print(f"All 105 runs complete. Results: {OUTPUT_DIR / 'all_seeds_metrics.csv'}")
+    print(f"\nAll {total_runs} runs complete.")
+    print(f"Per-seed metrics: {OUTPUT_DIR / 'all_seeds_metrics.csv'}")
+    print(f"Predictions: {PRED_OUT_DIR}/")
 
 
 if __name__ == "__main__":
     run_kinase_v1()
 ```
+
+**Verify trainer behavior before running full benchmark:** the comment "train_and_evaluate already saves predictions" assumes the library trainer does so. Test this assumption with one quick run:
+
+```bash
+python -c "
+from target_affinity_ml.training import train_and_evaluate
+import tempfile
+with tempfile.TemporaryDirectory() as tmp:
+    result = train_and_evaluate(
+        config_path='/Users/joshuaabbott/mlproject/configs/rf_baseline.yaml',
+        split_strategy='random',
+        dataset_version='v1',
+        dataset_dir='/Users/joshuaabbott/mlproject/data/processed/v1',
+        seed=42,
+        output_dir=tmp,
+    )
+    import os
+    print('Files in output_dir:', os.listdir(tmp))
+"
+```
+
+Expected: shows predictions.npz, metrics.json, or similar. If output_dir is empty, the trainer doesn't save by default — modify the re-run script to save predictions explicitly using `np.savez(output_dir/'predictions.npz', y_true=..., y_pred=..., y_std=...)`.
 
 - [ ] **Step 2: Run re-run on first model + split + seed (smoke test)**
 
@@ -1773,44 +1995,138 @@ Validation against preprint v1 in next task."
 
 - [ ] **Step 1: Write validation script**
 
+**Important context on reference data availability:**
+
+The kinase preprint v1 saved per-seed metrics for *deep models only* in `results/supplement_tables/S6_per_seed_metrics.csv` (columns: `model, split, seed, rmse, r2`). For *baseline models* (RF, XGBoost, ElasticNet, MLP), per-seed metrics must be **recomputed from saved predictions** (which exist in `results/predictions/{model}_{split}.npz`).
+
+The validation script handles both cases: it recomputes baseline references on the fly from prediction NPZ files, then merges with the deep-model per-seed CSV.
+
 Create `scripts/validate_kinase_revalidation.py`:
 
 ```python
 """Validate that kinase v1.0 re-run reproduces preprint v1 numbers.
 
-Tolerance: ±0.001 RMSE per (model, split, seed) combination.
+Tolerance: ±0.001 RMSE per (model, split, seed). Looser for derived metrics.
 Failures are flagged in validation_report.md with diagnostic info.
-"""
-import json
-from pathlib import Path
-import pandas as pd
 
-OUTPUT_DIR = Path("results/kinase_v1_revalidation")
+Reference sources:
+- Deep models (esm_fp_mlp, gnn, fusion): per-seed CSV (S6_per_seed_metrics.csv)
+- Baseline models (rf, xgboost, elasticnet, mlp): recomputed from .npz predictions
+"""
+import sys
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+from sklearn.metrics import mean_squared_error, r2_score
+from scipy.stats import pearsonr
+
+KINASE_REPO = Path("/Users/joshuaabbott/mlproject")
+RERUN_DIR = KINASE_REPO / "results" / "kinase_v1_revalidation"
+PREPRINT_PRED_DIR = KINASE_REPO / "results" / "predictions"
+PREPRINT_DEEP_CSV = (
+    KINASE_REPO / "results" / "supplement_tables" / "S6_per_seed_metrics.csv"
+)
+
 TOLERANCE_RMSE = 0.001
-TOLERANCE_OTHER = 0.005  # Slightly looser for R², Pearson R, etc.
+TOLERANCE_R2 = 0.005
+TOLERANCE_PEARSON = 0.005
+
+DEEP_MODELS = {"esm_fp_mlp", "gnn", "fusion"}
+
+
+def recompute_baseline_reference(model: str, split: str) -> dict | None:
+    """Recompute reference metrics from saved baseline prediction NPZ files.
+
+    Baseline NPZs typically contain a single set of predictions (final seed
+    or aggregated). Returns a single-row dict matching the schema, or None
+    if the predictions file is missing.
+    """
+    pred_file = PREPRINT_PRED_DIR / f"{model}_{split}.npz"
+    if not pred_file.exists():
+        return None
+    d = np.load(pred_file)
+    y_true_keys = ["y_test_true", "y_true"]
+    y_pred_keys = ["y_test_pred", "y_test_mean", "y_pred"]
+    y_true = next((d[k] for k in y_true_keys if k in d), None)
+    y_pred = next((d[k] for k in y_pred_keys if k in d), None)
+    if y_true is None or y_pred is None:
+        print(f"WARN: missing y_true/y_pred in {pred_file}; keys={list(d.keys())}",
+              file=sys.stderr)
+        return None
+    rmse = float(np.sqrt(mean_squared_error(y_true, y_pred)))
+    r2_val = float(r2_score(y_true, y_pred))
+    pearson_r, _ = pearsonr(y_true, y_pred)
+    return {
+        "model": model, "split": split,
+        "ref_rmse": rmse, "ref_r2": r2_val, "ref_pearson_r": float(pearson_r),
+    }
+
+
+def load_deep_reference() -> pd.DataFrame:
+    """Load per-seed reference metrics for deep models from S6 supplement table."""
+    if not PREPRINT_DEEP_CSV.exists():
+        print(f"WARN: deep reference CSV missing: {PREPRINT_DEEP_CSV}", file=sys.stderr)
+        return pd.DataFrame(columns=["model", "split", "seed", "ref_rmse", "ref_r2"])
+    df = pd.read_csv(PREPRINT_DEEP_CSV)
+    df = df.rename(columns={"rmse": "ref_rmse", "r2": "ref_r2"})
+    return df[["model", "split", "seed", "ref_rmse", "ref_r2"]]
+
 
 def validate():
-    rerun = pd.read_csv(OUTPUT_DIR / "all_seeds_metrics.csv")
-    # Read preprint v1 multi-seed (need to re-aggregate from per-seed if available)
-    preprint = pd.read_csv("results/supplement_tables/S6_per_seed_metrics.csv")
+    """Run validation, write report, return True if all comparisons pass."""
+    rerun = pd.read_csv(RERUN_DIR / "all_seeds_metrics.csv")
+    print(f"Loaded {len(rerun)} re-run rows")
 
-    # Join on (model, split, seed) and compute differences
-    merged = rerun.merge(
-        preprint, on=["model", "split", "seed"], suffixes=("_rerun", "_preprint")
-    )
-    merged["rmse_diff"] = (merged["test_rmse_rerun"] - merged["test_rmse_preprint"]).abs()
+    # Verify expected columns
+    required = {"model", "split", "seed", "test_rmse", "test_r2"}
+    missing = required - set(rerun.columns)
+    assert not missing, f"Re-run CSV missing required columns: {missing}"
 
-    # Flag failures
-    failures = merged[merged["rmse_diff"] > TOLERANCE_RMSE]
+    # Build reference dataframe
+    deep_ref = load_deep_reference()
+    print(f"Loaded deep reference: {len(deep_ref)} rows")
+
+    baseline_refs = []
+    for model in ["random_forest", "xgboost", "elasticnet", "mlp"]:
+        for split in ["random", "scaffold", "target"]:
+            ref = recompute_baseline_reference(model, split)
+            if ref is not None:
+                baseline_refs.append(ref)
+    baseline_df = pd.DataFrame(baseline_refs)
+    print(f"Computed baseline reference: {len(baseline_df)} (model, split) cells")
+
+    # Merge: deep models match per-seed; baselines match per (model, split) only
+    deep_merged = rerun.merge(deep_ref, on=["model", "split", "seed"], how="inner")
+    baseline_merged = rerun[rerun["model"].isin(
+        ["random_forest", "xgboost", "elasticnet", "mlp"]
+    )].merge(baseline_df, on=["model", "split"], how="inner")
+
+    print(f"Deep model comparisons: {len(deep_merged)}")
+    print(f"Baseline comparisons: {len(baseline_merged)}")
+
+    if len(deep_merged) == 0 and len(baseline_merged) == 0:
+        print("\nERROR: No reference values matched. Check column names and file paths.",
+              file=sys.stderr)
+        sys.exit(2)
+
+    # Compute differences
+    all_merged = pd.concat([deep_merged, baseline_merged], ignore_index=True, sort=False)
+    all_merged["rmse_diff"] = (all_merged["test_rmse"] - all_merged["ref_rmse"]).abs()
+    all_merged["r2_diff"] = (all_merged["test_r2"] - all_merged["ref_r2"]).abs()
+
+    failures = all_merged[all_merged["rmse_diff"] > TOLERANCE_RMSE]
 
     # Write report
-    report_path = OUTPUT_DIR / "validation_report.md"
+    report_path = RERUN_DIR / "validation_report.md"
     with open(report_path, "w") as f:
         f.write("# Kinase v1.0 Re-validation Report\n\n")
         f.write(f"**Date:** {pd.Timestamp.now().strftime('%Y-%m-%d')}\n\n")
-        f.write(f"**Tolerance:** ±{TOLERANCE_RMSE} RMSE\n\n")
-        f.write(f"**Total comparisons:** {len(merged)}\n")
-        f.write(f"**Failures:** {len(failures)}\n\n")
+        f.write(f"**Tolerance:** RMSE ±{TOLERANCE_RMSE}, R² ±{TOLERANCE_R2}\n\n")
+        f.write(f"**Total comparisons:** {len(all_merged)}\n")
+        f.write(f"  - Deep model per-seed: {len(deep_merged)}\n")
+        f.write(f"  - Baseline (model, split) aggregate: {len(baseline_merged)}\n")
+        f.write(f"**RMSE failures:** {len(failures)}\n\n")
 
         if len(failures) == 0:
             f.write("## ✅ All re-run results match preprint v1 within tolerance\n\n")
@@ -1818,19 +2134,19 @@ def validate():
         else:
             f.write("## ❌ Failures detected\n\n")
             f.write("Investigate refactor bugs before proceeding to Plan 2:\n\n")
-            f.write(failures[["model", "split", "seed",
-                             "test_rmse_rerun", "test_rmse_preprint",
-                             "rmse_diff"]].to_markdown(index=False))
+            cols = ["model", "split", "seed", "test_rmse", "ref_rmse", "rmse_diff"]
+            f.write(failures[cols].to_markdown(index=False))
 
         f.write("\n\n## Summary statistics by model × split\n\n")
-        summary = merged.groupby(["model", "split"]).agg(
+        summary = all_merged.groupby(["model", "split"]).agg(
+            n_compared=("rmse_diff", "count"),
             mean_rmse_diff=("rmse_diff", "mean"),
             max_rmse_diff=("rmse_diff", "max"),
             n_failures=("rmse_diff", lambda x: (x > TOLERANCE_RMSE).sum()),
         ).round(6)
         f.write(summary.to_markdown())
 
-    print(f"Validation report: {report_path}")
+    print(f"\nValidation report: {report_path}")
     return len(failures) == 0
 
 
@@ -1839,11 +2155,13 @@ if __name__ == "__main__":
     if not success:
         print("\n❌ FAILURES detected. See validation_report.md.")
         print("Do NOT proceed to Plan 2 until failures are debugged and resolved.")
-        exit(1)
+        sys.exit(1)
     else:
         print("\n✅ Validation passed. Library v1.0 reproduces preprint v1 numbers.")
         print("Ready to proceed to Plan 2.")
 ```
+
+**Note on baseline matching:** Deep models have per-seed reference values, so we match exactly on `(model, split, seed)`. Baselines only have aggregated reference predictions, so all 5 seeds of a baseline re-run are compared against the same single reference value — this should still detect refactor bugs (the re-run RMSEs should cluster within tolerance of the reference) but is less strict than per-seed matching.
 
 - [ ] **Step 2: Run validation**
 
