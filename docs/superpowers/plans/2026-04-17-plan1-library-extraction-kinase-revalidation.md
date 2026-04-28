@@ -1717,14 +1717,24 @@ git push origin v1.0.0
 cd /Users/joshuaabbott/mlproject
 ```
 
-Add dependency:
+Add dependency. **Important:** Until `target-affinity-ml==1.0.0` is published to PyPI, use one of these local-install forms:
 
 ```toml
 dependencies = [
-    "target-affinity-ml==1.0.0",
+    # OPTION A: PEP 440 path-based dependency (recommended for local development)
+    "target-affinity-ml @ file:///Users/joshuaabbott/target-affinity-ml",
+
+    # OPTION B: After GitHub push (Task 11 Step 6), git URL spec
+    # "target-affinity-ml @ git+https://github.com/jmabbott40/target-affinity-ml.git@v1.0.0",
+
+    # OPTION C: After PyPI publish (future)
+    # "target-affinity-ml==1.0.0",
+
     # ... existing dependencies removed (now provided by library)
 ]
 ```
+
+For Plan 1 execution, **use Option A** (local file path) — Option B requires the GitHub repo to exist and the v1.0.0 tag to be pushed, which doesn't happen until Task 11. Switch to Option B after Task 11 if reproducibility from a fresh clone is needed.
 
 - [ ] **Step 2: Replace `kinase_affinity/__init__.py` with thin re-exports**
 
@@ -2292,7 +2302,11 @@ Before declaring Plan 1 complete, verify:
 
 ## Notes for plan execution
 
-- **Tasks 3-8** (data, features, models, training, evaluation, visualization migrations) can be executed in parallel by separate subagents — they have no inter-dependencies.
+- **Tasks 3-8** (data, features, models, training, evaluation, visualization migrations) operate on different module directories with no inter-dependencies *within their own files*. **However**, all six tasks update `src/target_affinity_ml/__init__.py` (the library top-level init) — if executed in parallel, agents will have merge conflicts on this single file. **Recommended workflow:**
+   - Either: execute Tasks 3-8 sequentially, with each adding its imports to the top-level `__init__.py`
+   - Or: execute Tasks 3-8 in parallel on separate branches, then have one subagent perform a merge step that consolidates the `__init__.py` updates
+   - The orchestrating session should pick one approach and instruct subagents accordingly
 - **Task 1** (audit gate) should run first as a parallel independent stream — its decision unblocks Plan 2 even before Plan 1's other tasks complete.
 - **Tasks 13-14** (kinase re-run + validation) are the tallest pole; budget ~2 days wall-clock and one debugging cycle in case of failure.
-- **Task 12** (kinase repo update) deletes the migrated modules — verify backward-compatibility re-exports work *before* committing the deletions.
+- **Task 12** (kinase repo update) deletes the migrated modules — verify backward-compatibility re-exports work *before* committing the deletions (see reordered Steps 3-4).
+- **GitHub repo creation** (manual user action) is a prerequisite for Task 11 Step 6 push. The orchestrator should pause Task 11 Step 6 if the repo doesn't exist, request user to create it, then resume.
