@@ -1,0 +1,8 @@
+{
+  "n_targets_total": 36,
+  "n_targets_passing": 30,
+  "pass_fraction": 0.8333333333333334,
+  "decision": "OPTION_A",
+  "decision_message": "83% pass threshold. Proceed with binding-only data.",
+  "threshold": 500
+}
