@@ -1,3 +1,10 @@
+> **Library extraction notice (April 2026):** The reusable model + training + evaluation code
+> from this repository has been extracted into a separate library:
+> [`target-affinity-ml`](https://github.com/jmabbott40/target-affinity-ml). This repo will be
+> **frozen at v1.0** as the artifact accompanying the kinase preprint. Phase 1 of the multi-class
+> expansion benchmarks aminergic GPCRs in
+> [`gpcr-aminergic-benchmarks`](https://github.com/jmabbott40/gpcr-aminergic-benchmarks).
+
 # Kinase Inhibitor Affinity Prediction: Rigorous Baselines
 
 **When do complex, structure-aware ML models outperform simple cheminformatics baselines for kinase inhibitor binding affinity prediction?**

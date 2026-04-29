@@ -21,6 +21,13 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
 ]
 
+dependencies = [
+    # Use local-path install during Plan 1 development. After Task 11 push +
+    # GitHub release, switch to git URL pinned to v1.0.0:
+    #   "target-affinity-ml @ git+https://github.com/jmabbott40/target-affinity-ml.git@v1.0.0"
+    "target-affinity-ml @ file:///Users/joshuaabbott/target-affinity-ml",
+]
+
 [project.optional-dependencies]
 dev = ["pytest>=7.4", "ruff>=0.1"]
 deep = ["torch>=2.1", "torch-geometric>=2.4", "fair-esm>=2.0.0"]
