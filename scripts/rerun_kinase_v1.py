@@ -14,6 +14,7 @@ Estimated wall-clock: ~2 days at 4-way GPU parallelism.
 """
 from __future__ import annotations
 
+import argparse
 import sys
 import time
 from pathlib import Path
@@ -21,6 +22,12 @@ from pathlib import Path
 import pandas as pd
 
 from target_affinity_ml.training import train_and_evaluate
+from target_affinity_ml.training.deep_trainer import deep_train_and_evaluate
+
+# Models routed through the baseline trainer (config["features"]["type"] is a string)
+BASELINE_MODELS = {"random_forest", "xgboost", "elasticnet", "mlp"}
+# Models routed through the deep trainer (config["features"] has ligand/protein keys)
+DEEP_MODELS = {"esm_fp_mlp", "gnn", "fusion"}
 
 KINASE_REPO = Path(__file__).resolve().parent.parent
 OUTPUT_DIR = KINASE_REPO / "results" / "kinase_v1_revalidation"
@@ -57,9 +64,57 @@ def config_path_for(model: str) -> Path:
     return CONFIGS_DIR / CONFIG_FILENAMES[model]
 
 
-def run_kinase_v1() -> pd.DataFrame:
-    """Execute all 105 runs and write per-seed metrics CSV."""
+def _execute_one(model: str, split: str, seed: int) -> dict:
+    """Dispatch to the correct trainer and return its result dict."""
+    kwargs = dict(
+        config_path=config_path_for(model),
+        split_strategy=split,
+        dataset_version=DATASET_VERSION,
+        training_seed=seed,
+        output_suffix=f"_revalidation_seed{seed}",
+    )
+    if model in DEEP_MODELS:
+        return deep_train_and_evaluate(**kwargs)
+    if model in BASELINE_MODELS:
+        return train_and_evaluate(**kwargs)
+    raise ValueError(f"Unknown model: {model!r}")
+
+
+def _existing_successes(metrics_csv: Path) -> set[tuple[str, str, int]]:
+    """Read prior partial results to skip already-successful (model, split, seed)
+    triples. Used by --resume to avoid redoing baselines after a deep-model bug fix.
+    """
+    if not metrics_csv.exists():
+        return set()
+    df = pd.read_csv(metrics_csv)
+    # Treat null/NaN error as success (the column may be empty for successful runs)
+    successes = df[df["error"].isna() | (df["error"] == "")]
+    return {(r["model"], r["split"], int(r["seed"])) for _, r in successes.iterrows()}
+
+
+def run_kinase_v1(resume: bool = False) -> pd.DataFrame:
+    """Execute all 105 runs and write per-seed metrics CSV.
+
+    Parameters
+    ----------
+    resume : bool
+        If True, read all_seeds_metrics.csv (if present) and skip rows that
+        already succeeded. Useful after fixing a bug that affected only some
+        models (e.g. deep-model dispatch bug) without redoing baselines.
+    """
+    metrics_csv = OUTPUT_DIR / "all_seeds_metrics.csv"
+    skip_set: set[tuple[str, str, int]] = (
+        _existing_successes(metrics_csv) if resume else set()
+    )
+    if skip_set:
+        print(f"Resume mode: skipping {len(skip_set)} already-successful runs.")
+
+    # Preserve prior successful rows so the final CSV is complete
     rows: list[dict] = []
+    if resume and metrics_csv.exists():
+        prev = pd.read_csv(metrics_csv)
+        rows = prev[prev["error"].isna() | (prev["error"] == "")].to_dict("records")
+
     total_runs = len(MODELS) * len(SPLITS) * len(SEEDS)
     run_idx = 0
     overall_start = time.time()
@@ -68,17 +123,15 @@ def run_kinase_v1() -> pd.DataFrame:
         for split in SPLITS:
             for seed in SEEDS:
                 run_idx += 1
+                if (model, split, seed) in skip_set:
+                    print(f"[{run_idx}/{total_runs}] {model} | {split} | seed={seed} ... SKIPPED (already done)")
+                    continue
+
                 start = time.time()
                 print(f"[{run_idx}/{total_runs}] {model} | {split} | seed={seed} ... ",
                       end="", flush=True)
                 try:
-                    result = train_and_evaluate(
-                        config_path=config_path_for(model),
-                        split_strategy=split,
-                        dataset_version=DATASET_VERSION,
-                        training_seed=seed,
-                        output_suffix=f"_revalidation_seed{seed}",
-                    )
+                    result = _execute_one(model, split, seed)
                 except Exception as e:
                     elapsed = time.time() - start
                     print(f"FAILED in {elapsed:.0f}s: {type(e).__name__}: {e}")
@@ -136,6 +189,14 @@ def run_kinase_v1() -> pd.DataFrame:
 
 
 if __name__ == "__main__":
-    df = run_kinase_v1()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--resume", action="store_true",
+        help="Skip (model, split, seed) triples that already succeeded in "
+             "results/kinase_v1_revalidation/all_seeds_metrics.csv.",
+    )
+    args = parser.parse_args()
+
+    df = run_kinase_v1(resume=args.resume)
     if df["error"].notna().any():
         sys.exit(1)
