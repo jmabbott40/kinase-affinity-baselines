@@ -59,32 +59,43 @@ def resolve_chembl_ids(gene_symbols: Optional[list[str]] = None) -> dict[str, st
     failed = []
 
     for gene in gene_symbols:
-        results = target_client.filter(
-            target_components__target_component_synonyms__component_synonym=gene,
-            target_type="SINGLE PROTEIN",
-            organism="Homo sapiens",
-        ).only(["target_chembl_id", "pref_name", "target_components"])
+        # Each per-gene API call is wrapped in try/except so a transient
+        # network failure or single bad response doesn't crash the entire
+        # audit (which would lose all preceding successful resolutions).
+        try:
+            results = target_client.filter(
+                target_components__target_component_synonyms__component_synonym=gene,
+                target_type="SINGLE PROTEIN",
+                organism="Homo sapiens",
+            ).only(["target_chembl_id", "pref_name", "target_components"])
 
-        chembl_id = None
-        for result in results:
-            for component in result.get("target_components", []):
-                synonyms = component.get("target_component_synonyms", [])
-                gene_match = any(
-                    s.get("component_synonym") == gene
-                    and s.get("syn_type") == "GENE_SYMBOL"
-                    for s in synonyms
-                )
-                if gene_match:
-                    chembl_id = result["target_chembl_id"]
+            chembl_id = None
+            for result in results:
+                for component in result.get("target_components", []):
+                    synonyms = component.get("target_component_synonyms", [])
+                    gene_match = any(
+                        s.get("component_synonym") == gene
+                        and s.get("syn_type") == "GENE_SYMBOL"
+                        for s in synonyms
+                    )
+                    if gene_match:
+                        chembl_id = result["target_chembl_id"]
+                        break
+                if chembl_id:
                     break
-            if chembl_id:
-                break
 
-        if chembl_id:
-            resolved[gene] = chembl_id
-        else:
+            if chembl_id:
+                resolved[gene] = chembl_id
+            else:
+                failed.append(gene)
+                print(f"WARN: could not resolve {gene} to a ChEMBL ID",
+                      file=sys.stderr)
+        except Exception as e:
+            # API error (network timeout, 5xx, deprecated field, etc.)
             failed.append(gene)
-            print(f"WARN: could not resolve {gene} to a ChEMBL ID", file=sys.stderr)
+            print(f"WARN: API error resolving {gene}: {type(e).__name__}: {e}",
+                  file=sys.stderr)
+            continue
 
     if failed:
         print(f"\nResolution: {len(resolved)} succeeded, {len(failed)} failed",

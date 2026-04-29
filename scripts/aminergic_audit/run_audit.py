@@ -30,12 +30,52 @@ FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 # the absolute floor and the OPTION_A pass-fraction threshold.
 # 500 binding records is comparable to the lower end of the kinase preprint's
 # per-target record counts, preserving data-quality consistency.
-# Decision logged: results/aminergic_audit/audit_decision.json (commit at
-# branch tip when threshold was lowered).
+# Decision logged in: results/aminergic_audit/audit_decision.json
 THRESHOLD_BINDING_RECORDS = 500
 PASS_FRACTION_HIGH = 0.80
 PASS_FRACTION_LOW = 0.60
 HALT_MIN_TARGETS = 30
+
+
+def compute_decision(n_pass: int, n_total: int, threshold: int) -> dict:
+    """Apply the audit decision logic given pass count and total count.
+
+    Decision tiers (HALT check is FIRST and overrides pass-fraction tiers):
+      HALT             — n_pass < HALT_MIN_TARGETS (insufficient absolute count)
+      OPTION_A         — pass_fraction >= PASS_FRACTION_HIGH (>=80%)
+      OPTION_A_FLAGGED — pass_fraction >= PASS_FRACTION_LOW  (60-80%)
+      OPTION_B_PIVOT   — otherwise (<60%, pivot to EC50 inclusion)
+
+    Returns a summary dict suitable for serialization as audit_decision.json.
+    Pure function — no I/O, no external state.
+    """
+    pass_fraction = n_pass / n_total if n_total > 0 else 0.0
+
+    if n_pass < HALT_MIN_TARGETS:
+        decision = "HALT"
+        decision_msg = (f"Only {n_pass} targets meet threshold "
+                        f"(<{HALT_MIN_TARGETS}). HALT for design review.")
+    elif pass_fraction >= PASS_FRACTION_HIGH:
+        decision = "OPTION_A"
+        decision_msg = (f"{pass_fraction:.0%} pass threshold. "
+                        f"Proceed with binding-only data.")
+    elif pass_fraction >= PASS_FRACTION_LOW:
+        decision = "OPTION_A_FLAGGED"
+        decision_msg = (f"{pass_fraction:.0%} pass threshold. "
+                        f"Proceed with binding-only, flag in paper.")
+    else:
+        decision = "OPTION_B_PIVOT"
+        decision_msg = (f"{pass_fraction:.0%} pass threshold. "
+                        f"Pivot to EC50 inclusion.")
+
+    return {
+        "n_targets_total": n_total,
+        "n_targets_passing": n_pass,
+        "pass_fraction": pass_fraction,
+        "decision": decision,
+        "decision_message": decision_msg,
+        "threshold": threshold,
+    }
 
 
 def query_target_records(target_chembl_id: str) -> dict:
@@ -128,33 +168,7 @@ def run_audit():
     # Compute decision
     n_total = len(df)
     n_pass = int(df["passes_threshold"].sum())
-    pass_fraction = n_pass / n_total if n_total > 0 else 0.0
-
-    if n_pass < HALT_MIN_TARGETS:
-        decision = "HALT"
-        decision_msg = (f"Only {n_pass} targets meet threshold "
-                        f"(<{HALT_MIN_TARGETS}). HALT for design review.")
-    elif pass_fraction >= PASS_FRACTION_HIGH:
-        decision = "OPTION_A"
-        decision_msg = (f"{pass_fraction:.0%} pass threshold. "
-                        f"Proceed with binding-only data.")
-    elif pass_fraction >= PASS_FRACTION_LOW:
-        decision = "OPTION_A_FLAGGED"
-        decision_msg = (f"{pass_fraction:.0%} pass threshold. "
-                        f"Proceed with binding-only, flag in paper.")
-    else:
-        decision = "OPTION_B_PIVOT"
-        decision_msg = (f"{pass_fraction:.0%} pass threshold. "
-                        f"Pivot to EC50 inclusion.")
-
-    summary = {
-        "n_targets_total": n_total,
-        "n_targets_passing": n_pass,
-        "pass_fraction": pass_fraction,
-        "decision": decision,
-        "decision_message": decision_msg,
-        "threshold": THRESHOLD_BINDING_RECORDS,
-    }
+    summary = compute_decision(n_pass, n_total, THRESHOLD_BINDING_RECORDS)
     with open(OUTPUT_DIR / "audit_decision.json", "w") as f:
         json.dump(summary, f, indent=2)
 
@@ -212,8 +226,10 @@ def plot_per_target_counts(df: pd.DataFrame) -> None:
     # for plotting (the bars still render very small, signaling "no data").
     plot_values = df_sorted["n_binding_records"].clip(lower=0.5)
     ax.bar(range(len(df_sorted)), plot_values, color=colors)
+    # Threshold line — label set only via the explicit Line2D below to avoid
+    # a duplicate legend entry.
     ax.axhline(y=THRESHOLD_BINDING_RECORDS, color="red", linestyle="--",
-               linewidth=1, label=f"Threshold: {THRESHOLD_BINDING_RECORDS}")
+               linewidth=1)
     labels = [f"{row['gene_symbol']}" for _, row in df_sorted.iterrows()]
     ax.set_xticks(range(len(df_sorted)))
     ax.set_xticklabels(labels, rotation=90, fontsize=7)
