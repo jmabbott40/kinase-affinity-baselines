@@ -22,10 +22,12 @@ classifiers = [
 ]
 
 dependencies = [
-    # Use local-path install during Plan 1 development. After Task 11 push +
-    # GitHub release, switch to git URL pinned to v1.0.0:
-    #   "target-affinity-ml @ git+https://github.com/jmabbott40/target-affinity-ml.git@v1.0.0"
-    "target-affinity-ml @ file:///Users/joshuaabbott/target-affinity-ml",
+    # Pinned to library v1.0.0 (validated reproducibility). On a fresh clone
+    # (e.g. AWS) `pip install -e .` will fetch the library from GitHub.
+    # For local development with a checkout of target-affinity-ml that has
+    # uncommitted changes, switch to:
+    #   "target-affinity-ml @ file:///Users/joshuaabbott/target-affinity-ml"
+    "target-affinity-ml @ git+https://github.com/jmabbott40/target-affinity-ml.git@v1.0.0",
 ]
 
 [project.optional-dependencies]
