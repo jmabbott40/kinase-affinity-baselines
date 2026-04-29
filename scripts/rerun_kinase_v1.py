@@ -38,11 +38,23 @@ CONFIGS_DIR = KINASE_REPO / "configs"
 DATASET_VERSION = "v1"
 
 
+# The model registry uses long names ("random_forest", "xgboost") but
+# the YAML files on disk use short names ("rf_baseline.yaml",
+# "xgb_baseline.yaml") — this map keeps both consistent.
+CONFIG_FILENAMES = {
+    "random_forest": "rf_baseline.yaml",
+    "xgboost": "xgb_baseline.yaml",
+    "elasticnet": "elasticnet_baseline.yaml",
+    "mlp": "mlp_baseline.yaml",
+    "esm_fp_mlp": "esm_fp_mlp.yaml",
+    "gnn": "gnn.yaml",
+    "fusion": "fusion.yaml",
+}
+
+
 def config_path_for(model: str) -> Path:
-    """Resolve config path: baselines have _baseline suffix, deep models do not."""
-    if model in ("random_forest", "xgboost", "elasticnet", "mlp"):
-        return CONFIGS_DIR / f"{model}_baseline.yaml"
-    return CONFIGS_DIR / f"{model}.yaml"
+    """Resolve a model's YAML config path (model registry name → on-disk filename)."""
+    return CONFIGS_DIR / CONFIG_FILENAMES[model]
 
 
 def run_kinase_v1() -> pd.DataFrame:
