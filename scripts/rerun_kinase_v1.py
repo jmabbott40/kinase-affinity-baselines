@@ -180,7 +180,10 @@ def run_kinase_v1(resume: bool = False) -> pd.DataFrame:
     print(f"Per-seed metrics: {OUTPUT_DIR / 'all_seeds_metrics.csv'}")
     print(f"Predictions output suffix: _revalidation_seed{{42,123,456,789,1024}}")
 
-    n_errors = sum(1 for r in rows if r.get("error"))
+    n_errors = sum(
+        1 for r in rows
+        if r.get("error") is not None and str(r.get("error")).strip() not in ("", "nan")
+    )
     if n_errors:
         print(f"WARNING: {n_errors}/{total_runs} runs failed. See 'error' column.")
         return df
