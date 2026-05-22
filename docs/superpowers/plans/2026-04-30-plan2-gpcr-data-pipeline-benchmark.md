@@ -230,15 +230,21 @@ Expected: PASS — all 4 tests
 
 - [ ] **Step 5: Refactor `chembl_fetcher.py` to accept `TargetClassConfig`**
 
-Modify `src/target_affinity_ml/data/chembl_fetcher.py`:
-- Keep the existing `KINASE_GO_TERMS` set but move it into a module-level `KINASE_CONFIG = TargetClassConfig(...)` instance for backward compatibility.
-- Change the main fetch entry point to accept a `config: TargetClassConfig` parameter.
-- When `config.uses_explicit_target_list` is True, skip GO-term discovery and fetch activities directly for the listed target IDs.
-- When `config.go_terms` is set, use the existing GO-based discovery path.
-- Replace `_classify_kinase` with a generic `_classify_subfamily(target_id, config)` that looks up `config.subfamily_map`.
-- Rename `fetch_kinase_targets` → `fetch_target_class` (keep a thin `fetch_kinase_targets` wrapper that calls `fetch_target_class(KINASE_CONFIG)` for backward compatibility).
+**Current structure (verified):** `chembl_fetcher.py` has TWO separate functions plus an orchestrator:
+- `fetch_kinase_targets()` — discovers kinase targets via GO terms, returns target metadata
+- `fetch_bioactivities(...)` — fetches IC50/Ki/Kd activities for a set of targets
+- `main()` — CLI orchestrator that calls both and saves parquet files
 
-**Important:** Preserve the existing kinase code path exactly — the kinase repo still depends on it. The backward-compat wrapper must produce identical output.
+The refactor:
+- Keep the existing `KINASE_GO_TERMS` set; add a module-level `KINASE_CONFIG = TargetClassConfig(class_name="kinase", go_terms=KINASE_GO_TERMS, name_keywords=["kinase"], raw_filename_stem="chembl_kinase")` instance.
+- **Add a NEW orchestrator function** `fetch_target_class(config: TargetClassConfig) -> tuple[pd.DataFrame, pd.DataFrame]` that returns `(activities_df, targets_df)`. Internally:
+  - If `config.uses_explicit_target_list`: skip GO discovery; use `config.explicit_target_ids` directly as the target set.
+  - Else (`config.go_terms` set): run the existing GO-based discovery (the current `fetch_kinase_targets` logic, generalized to use `config.go_terms` instead of the module constant).
+  - Then call `fetch_bioactivities` for the resolved target set.
+- Replace `_classify_kinase` with a generic `_classify_subfamily(target_id, config)` that looks up `config.subfamily_map` (returns `"unknown"` if not present).
+- Keep `fetch_kinase_targets()` working unchanged (it stays as the GO-discovery function); add a thin `fetch_kinase_data()` backward-compat wrapper that calls `fetch_target_class(KINASE_CONFIG)` if any existing caller expects the combined behavior. Verify via grep what the kinase repo actually imports.
+
+**Important:** Preserve the existing kinase code paths exactly — the kinase repo depends on `fetch_kinase_targets` and `fetch_bioactivities`. Do not change their signatures; only ADD the new `fetch_target_class` orchestrator and the `KINASE_CONFIG` constant. Task 7's GPCR script will call `fetch_target_class(aminergic_config)`.
 
 - [ ] **Step 6: Write mocked test for `chembl_fetcher.py`**
 
@@ -267,73 +273,85 @@ git -c commit.gpgsign=false commit -m "Add TargetClassConfig; refactor chembl_fe
 
 ---
 
-## Task 2: Refactor `curate.py` to remove hardcoded kinase logic
+## Task 2: Extract a class-agnostic `curate_activities` function from `curate.py`
 
 **Files:**
 - Modify: `target-affinity-ml/src/target_affinity_ml/data/curate.py`
 - Create: `target-affinity-ml/tests/unit/test_curate.py`
 
-**Context:** `curate.py` hardcodes `chembl_kinase_activities.parquet`, `chembl_kinase_targets.parquet`, and a `kinase_group` column merge. The refactor makes `curate_activities` accept a `TargetClassConfig` so filenames and the subfamily column are derived from config.
+**Context (verified):** `curate.py` has NO reusable `curate_activities` function — the entire pipeline lives inside `main()` (curate.py:257), which: (1) hardcodes `chembl_kinase_activities.parquet` / `chembl_kinase_targets.parquet` paths, (2) hardcodes the `kinase_group` column in the targets merge (curate.py:283-288), (3) wraps everything in an argparse CLI. The *step* functions it calls — `standardize_dataframe`, `convert_to_pactivity`, `handle_duplicates`, `apply_quality_filters`, `add_classification_labels` — are already class-agnostic.
+
+**This task EXTRACTS** a new reusable `curate_activities(config, dataset_config)` function out of `main()`, then rewires `main()` to call it.
 
 - [ ] **Step 1: Write the failing test**
 
-Create `tests/unit/test_curate.py` — test that `curate_activities` accepts a `TargetClassConfig`, reads from `config.raw_activities_filename`, and produces a curated DataFrame with a generic `subfamily` column (not `kinase_group`). Use a small synthetic raw-activities DataFrame fixture.
+Create `tests/unit/test_curate.py`. Test that the NEW `curate_activities(config: TargetClassConfig, dataset_config: dict, raw_dir: Path)` function:
+- reads raw activities from `raw_dir / config.raw_activities_filename`
+- merges target metadata from `raw_dir / config.raw_targets_filename` if present, producing a generic `subfamily` column (not `kinase_group`)
+- returns a curated DataFrame
+Use a small synthetic raw-activities parquet fixture written to a `tmp_path`.
 
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `python -m pytest tests/unit/test_curate.py -v`
-Expected: FAIL
+Expected: FAIL — `cannot import name 'curate_activities'`
 
-- [ ] **Step 3: Refactor `curate.py`**
+- [ ] **Step 3: Extract `curate_activities` from `main()`**
 
-- `curate_activities(config: TargetClassConfig, ...)` — derive raw paths from `config.raw_activities_filename` / `config.raw_targets_filename`.
-- Rename the merged `kinase_group` column to a generic `subfamily`.
-- Keep all the curation logic (median aggregation, noise flag, pActivity range, active label) unchanged — those are class-agnostic.
-- Keep a backward-compat `curate_kinase_activities()` wrapper that calls `curate_activities(KINASE_CONFIG)`.
+In `curate.py`:
+- Add `def curate_activities(config: TargetClassConfig, dataset_config: dict, raw_dir: Path | None = None) -> pd.DataFrame:` containing the body of `main()` Steps 1-6 (load raw → standardize → pActivity → duplicates → quality filters → classification labels). Returns the curated DataFrame.
+  - Raw paths derive from `config.raw_activities_filename` / `config.raw_targets_filename`.
+  - The targets merge selects `["target_chembl_id", "pref_name", "gene_symbol"]` plus — **only if the column exists** — the class subfamily column, renamed to a generic `subfamily`. For kinases the source column is `kinase_group`; handle this by checking `if "kinase_group" in targets_df.columns: rename to subfamily`. (GPCR raw targets won't have `kinase_group`; the `subfamily` column for GPCRs comes from `config.subfamily_map` applied by mapping `target_chembl_id`.)
+- Rewire `main()` to: parse args → load `dataset_config` YAML → call `curate_activities(KINASE_CONFIG, dataset_config)` → run the split step → save outputs. `main()` keeps the CLI and the kinase defaults.
+- Keep all step-function logic (median aggregation, noise flag, pActivity range, active label) byte-identical — class-agnostic already.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [ ] **Step 4: Run test + verify kinase `main()` still works**
 
 Run: `python -m pytest tests/unit/test_curate.py -v`
 Expected: PASS
+
+Verify `main()` is unbroken — its argparse + kinase-default behavior must be unchanged (the kinase repo's `python -m kinase_affinity.data.curate` path still works via the re-export shim).
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add src/target_affinity_ml/data/curate.py tests/unit/test_curate.py
-git -c commit.gpgsign=false commit -m "Refactor curate.py: derive paths/columns from TargetClassConfig"
+git -c commit.gpgsign=false commit -m "Extract class-agnostic curate_activities function from curate.main()"
 ```
 
 ---
 
-## Task 3: Add `data_dir` parameter to feature loaders (L3)
+## Task 3: Add `data_dir` parameter to feature loaders AND `compute_and_cache_features` (L3)
 
 **Files:**
 - Modify: `target-affinity-ml/src/target_affinity_ml/features/__init__.py`
 - Modify: `target-affinity-ml/tests/unit/test_features.py`
 
-**Context:** `load_morgan_fingerprints`, `load_rdkit_descriptors`, `load_esm2_embeddings` use a global `PROCESSED_DIR = Path("data/processed")` relative to cwd. The GPCR application repo needs to point them at its own data directory without `os.chdir`.
+**Context:** `load_morgan_fingerprints`, `load_rdkit_descriptors`, `load_esm2_embeddings`, **and `compute_and_cache_features`** all use a module-global `PROCESSED_DIR = Path("data/processed")` relative to cwd. The GPCR application repo needs to point them at its own data directory without `os.chdir`. All four functions need the `data_dir` parameter — Task 10 calls `compute_and_cache_features` and would hit the same relative-path problem otherwise.
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **Step 1: Write the failing tests**
 
-Add to `tests/unit/test_features.py` a test that calls `load_morgan_fingerprints(version="v1", data_dir=<tmp_path>)` and verifies it reads from the supplied directory, not cwd.
+Add to `tests/unit/test_features.py` tests that:
+- `load_morgan_fingerprints(version="v1", data_dir=<tmp_path>)` reads from the supplied directory, not cwd
+- `compute_and_cache_features(config_path=..., data_dir=<tmp_path>)` writes outputs under the supplied directory
 
-- [ ] **Step 2: Run test to verify it fails**
+- [ ] **Step 2: Run tests to verify they fail**
 
 Run: `python -m pytest tests/unit/test_features.py -k data_dir -v`
 Expected: FAIL — `data_dir` is an unexpected keyword argument
 
-- [ ] **Step 3: Add `data_dir` parameter**
+- [ ] **Step 3: Add `data_dir` parameter to all four functions**
 
-Modify all three loaders in `features/__init__.py`:
+Modify `features/__init__.py`. For the three loaders:
 ```python
 def load_morgan_fingerprints(version="v1", data_dir=None):
     base = Path(data_dir) if data_dir is not None else Path("data/processed")
     features_dir = base / version / "features"
     ...
 ```
-Same pattern for `load_rdkit_descriptors` and `load_esm2_embeddings`. Default `None` preserves the existing relative-path behavior (kinase repo unaffected).
+Same for `load_rdkit_descriptors`, `load_esm2_embeddings`. For `compute_and_cache_features`, add `data_dir=None` and replace the module-global `PROCESSED_DIR` usage with `Path(data_dir) if data_dir else PROCESSED_DIR`. Default `None` preserves existing relative-path behavior (kinase repo unaffected).
 
-- [ ] **Step 4: Run test to verify it passes**
+- [ ] **Step 4: Run tests to verify they pass**
 
 Run: `python -m pytest tests/unit/test_features.py -v`
 Expected: all PASS
@@ -342,7 +360,7 @@ Expected: all PASS
 
 ```bash
 git add src/target_affinity_ml/features/__init__.py tests/unit/test_features.py
-git -c commit.gpgsign=false commit -m "Add data_dir parameter to feature loaders (L3)"
+git -c commit.gpgsign=false commit -m "Add data_dir parameter to feature loaders + compute_and_cache_features (L3)"
 ```
 
 ---
@@ -374,12 +392,16 @@ n_errors = sum(
 )
 ```
 
-- [ ] **Step 4: Commit (two repos)**
+- [ ] **Step 4: Fix the dead-code statement in `splits.py`**
+
+The reviewer noted `splits.py:287` has a dead `n = len(df)` assignment whose result is never used (it was flagged by ruff F841 during Plan 1 but the assignment itself remains). In `target-affinity-ml/src/target_affinity_ml/data/splits.py`, locate the unused `n = len(df)` near the target-split logging block and either remove it or inline it into the `logger.info` call that needs the count. Run `ruff check src/target_affinity_ml/data/splits.py` to confirm clean.
+
+- [ ] **Step 5: Commit (two repos)**
 
 ```bash
 cd target-affinity-ml
-git add tests/integration/test_deep_model_smoke.py
-git -c commit.gpgsign=false commit -m "Add deep-model integration smoke test (L4)"
+git add tests/integration/test_deep_model_smoke.py src/target_affinity_ml/data/splits.py
+git -c commit.gpgsign=false commit -m "Add deep-model integration smoke test (L4); remove dead code in splits.py"
 
 cd ../mlproject
 git add scripts/rerun_kinase_v1.py
@@ -523,9 +545,10 @@ git push -u origin main
 
 The script:
 1. Resolves aminergic gene symbols → ChEMBL IDs via `target_lists.resolve_chembl_ids()`
-2. Builds the aminergic `TargetClassConfig` via `build_aminergic_config()`
-3. Calls `target_affinity_ml.data.chembl_fetcher.fetch_target_class(config)` to fetch IC50/Ki/Kd binding activities for the 30 aminergic targets (the same inclusion criteria the audit used: `assay_type="B"`, `confidence_score>=7`, `standard_relation="="`, `standard_units="nM"`, pChEMBL present)
-4. Saves raw activities + targets parquet files
+2. **Persists the resolved mapping** to `data/processed/v1/resolved_target_ids.json` (`{gene_symbol: chembl_id}`) so Task 8's curation script and Task 11's ESM script can rebuild the aminergic `TargetClassConfig` without re-querying ChEMBL.
+3. Builds the aminergic `TargetClassConfig` via `build_aminergic_config(resolved_ids)`
+4. Calls `target_affinity_ml.data.chembl_fetcher.fetch_target_class(config)` to fetch IC50/Ki/Kd binding activities for the 30 aminergic targets (the same inclusion criteria the audit used: `assay_type="B"`, `confidence_score>=7`, `standard_relation="="`, `standard_units="nM"`, pChEMBL present)
+5. Saves raw activities + targets parquet files to `data/raw/` (using `config.raw_activities_filename` / `config.raw_targets_filename`)
 
 - [ ] **Step 2: Run the fetch (live ChEMBL API, ~20-40 min)**
 
@@ -557,12 +580,17 @@ Mirror the kinase `dataset_v1.yaml` curation parameters: pActivity range [3.0, 1
 
 - [ ] **Step 2: Write `curate_gpcr_data.py`**
 
-Calls `target_affinity_ml.data.curate.curate_activities(aminergic_config, config_yaml)`. Produces curated parquet + curation_stats.json.
+The script:
+1. Loads `configs/dataset_aminergic_v1.yaml` as `dataset_config`.
+2. Builds the aminergic `TargetClassConfig` (via `build_aminergic_config` — needs the resolved gene→ChEMBL mapping from Task 7's fetch step; persist that mapping in Task 7 so this script can reload it).
+3. Calls `target_affinity_ml.data.curate.curate_activities(config=aminergic_config, dataset_config=dataset_config, raw_dir=Path("data/raw"))` — the function extracted in Task 2.
+4. Because GPCR raw targets have no `kinase_group` column, the `subfamily` column is attached here by mapping `target_chembl_id → config.subfamily_map`. Apply this after `curate_activities` returns (or pass it through — confirm against Task 2's final implementation which handles "subfamily from config.subfamily_map" for the explicit-target-list case).
+5. Writes `data/processed/v1/curated_activities.parquet` + `curation_stats.json`.
 
 - [ ] **Step 3: Run curation**
 
 Run: `python scripts/curate_gpcr_data.py`
-Expected: `data/processed/v1/curated_activities.parquet` written; curation_stats.json reports compounds, targets (~30), records retained.
+Expected: `data/processed/v1/curated_activities.parquet` written; curation_stats.json reports compounds, targets (~30), records retained. Every row should have a non-null `subfamily` (one of: dopamine, serotonin, adrenergic, histamine, muscarinic).
 
 - [ ] **Step 4: Write `docs/data_card.md`**
 
@@ -583,27 +611,36 @@ git -c commit.gpgsign=false commit -m "Add GPCR curation pipeline + dataset card
 - Create: `gpcr-aminergic-benchmarks/scripts/build_gpcr_splits.py`
 - Output: `data/processed/v1/splits/{random,scaffold,target}_split.json`
 
-**Context:** The library's `splits.py` provides `random_split`, `scaffold_split`, `target_split`. The target split holds out entire targets/subfamilies. For aminergic GPCRs, the target split should hold out entire **receptor families** (dopamine, serotonin, etc.) using `config.subfamily_map` — verify the library's `target_split` accepts a subfamily grouping rather than hardcoding kinase logic.
+**Context (verified):** The library's `splits.py` provides `random_split`, `scaffold_split`, `target_split`. **`target_split` (splits.py:231) holds out entire individual targets by `target_col` — it does NOT take a subfamily-grouping argument.** This is already class-agnostic: it holds out targets regardless of class.
 
-- [ ] **Step 1: Inspect the library `target_split` signature**
+**Design decision — GPCR target split uses individual-target holdout, identical to the kinase protocol.** The kinase preprint's `target_split` used per-target holdout (that is what the code does). For a faithful cross-class comparison (spec Section 6.2 guardrail: "exact same model hyperparameters... any deviation documented"), the GPCR target split MUST use the identical `target_split` function — per-target holdout. The spec Section 4.5's "hold out entire families" language describes an *optional supplement*; the **primary** target split matches the kinase code exactly.
+
+The `config.subfamily_map` (receptor family per target) is **metadata for Plan 3's per-family analysis**, not used by the Plan 2 target split. Plan 3 may add a leave-one-family-out supplement; Plan 2 does not.
+
+- [ ] **Step 1: Confirm the kinase target split behavior**
 
 Run: `python -c "import inspect; from target_affinity_ml.data.splits import target_split; print(inspect.signature(target_split))"`
-If `target_split` requires a kinase-specific grouping argument, note it — Step 2 adapts accordingly.
+Confirm it splits by individual target (parameter `target_col`, no group argument). This is the function the GPCR target split will use unchanged.
 
 - [ ] **Step 2: Write `build_gpcr_splits.py`**
 
-Generate all three splits (seed=42), saving index JSONs. For the target split, pass the aminergic family grouping (from `config.subfamily_map`) so entire families are held out. 80/10/10 for random; Murcko scaffold groups for scaffold.
+Generate all three splits with `seed=42`, saving index JSONs to `data/processed/v1/splits/`:
+- `random_split` — 80/10/10, stratified by target
+- `scaffold_split` — Murcko scaffold groups, no scaffold leakage
+- `target_split` — individual-target holdout via the library's `target_split(df, target_col="target_chembl_id", seed=42)` — **the exact same call the kinase pipeline uses**
+
+Note: with ~30 aminergic targets, the target split's test set is ~3 targets (10%). This is small but is the faithful analog of the kinase protocol. Document this in the script's docstring and in the Task 14 completion summary.
 
 - [ ] **Step 3: Run + verify split integrity**
 
 Run: `python scripts/build_gpcr_splits.py`
-Verify: no index overlap between train/val/test; scaffold split has no scaffold leakage; target split holds out complete families.
+Verify: no index overlap between train/val/test; scaffold split has no scaffold leakage (no scaffold appears in two splits); target split's test targets do not appear in train/val.
 
 - [ ] **Step 4: Commit**
 
 ```bash
 git add scripts/build_gpcr_splits.py
-git -c commit.gpgsign=false commit -m "Add GPCR train/val/test split generation"
+git -c commit.gpgsign=false commit -m "Add GPCR train/val/test split generation (per-target holdout, matching kinase protocol)"
 ```
 
 ---
@@ -644,9 +681,11 @@ git -c commit.gpgsign=false commit -m "Add GPCR molecular feature generation"
 
 - [ ] **Step 1: Write `build_gpcr_esm.py`**
 
-1. Fetch UniProt sequences for the 30 aminergic targets via `target_affinity_ml.data.protein_sequences` (resolve ChEMBL target → UniProt accession → sequence).
-2. Compute ESM-2 (`esm2_t33_650M_UR50D`) mean-pooled embeddings via `target_affinity_ml.features.protein_embeddings`.
-3. Save `protein_sequences.json`, `esm2_embeddings.npz`, `target_index.json`.
+1. Fetch UniProt sequences for the 30 aminergic targets. `target_affinity_ml.data.protein_sequences` exposes `fetch_uniprot_accessions`, `fetch_sequences_from_uniprot`, and the orchestrator `build_protein_sequence_cache` — call `build_protein_sequence_cache` with the aminergic target IDs to produce `protein_sequences.json`.
+2. Compute ESM-2 (`esm2_t33_650M_UR50D`) mean-pooled embeddings via `target_affinity_ml.features.protein_embeddings.compute_esm2_embeddings`.
+3. Save `protein_sequences.json`, `esm2_embeddings.npz`, `target_index.json` under `data/processed/v1/`.
+
+**Verify the function signatures first** with `python -c "import inspect; from target_affinity_ml.data.protein_sequences import build_protein_sequence_cache; print(inspect.signature(build_protein_sequence_cache))"` — adapt the call if the parameters differ from this description.
 
 - [ ] **Step 2: Run on a GPU machine (the AWS instance)**
 
@@ -724,7 +763,7 @@ Verify 105/105 runs succeed. Watch for the deep-model dispatch working correctly
 
 - [ ] **Step 4: Aggregate multi-seed results**
 
-Run the library's multi-seed analysis (`target_affinity_ml.evaluation.multi_seed_analysis`) to produce `multi_seed_aggregated.csv` (mean ± SD across 5 seeds per model × split).
+Run the library's multi-seed analysis function `target_affinity_ml.evaluation.multi_seed_analysis.run_full_multi_seed_analysis` to produce `multi_seed_aggregated.csv` (mean ± SD across 5 seeds per model × split). Verify its signature first with `inspect.signature` — it may expect a specific input directory layout; point it at `results/gpcr_v1_benchmark/`.
 
 - [ ] **Step 5: Commit results**
 
