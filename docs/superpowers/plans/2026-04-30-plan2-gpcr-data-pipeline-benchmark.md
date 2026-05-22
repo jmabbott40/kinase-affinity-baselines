@@ -242,16 +242,16 @@ The refactor:
   - Else (`config.go_terms` set): run the existing GO-based discovery (the current `fetch_kinase_targets` logic, generalized to use `config.go_terms` instead of the module constant).
   - Then call `fetch_bioactivities` for the resolved target set.
 - Replace `_classify_kinase` with a generic `_classify_subfamily(target_id, config)` that looks up `config.subfamily_map` (returns `"unknown"` if not present).
-- Keep `fetch_kinase_targets()` working unchanged (it stays as the GO-discovery function); add a thin `fetch_kinase_data()` backward-compat wrapper that calls `fetch_target_class(KINASE_CONFIG)` if any existing caller expects the combined behavior. Verify via grep what the kinase repo actually imports.
+- Keep `fetch_kinase_targets()` and `fetch_bioactivities()` working unchanged — they stay as the underlying functions. **Do not add any separate `fetch_kinase_data` wrapper.** The only new public symbols are `fetch_target_class` (the orchestrator) and `KINASE_CONFIG` (the constant). The existing `main()` CLI may optionally be rewired to call `fetch_target_class(KINASE_CONFIG)` internally, but its external behavior must stay identical.
 
 **Important:** Preserve the existing kinase code paths exactly — the kinase repo depends on `fetch_kinase_targets` and `fetch_bioactivities`. Do not change their signatures; only ADD the new `fetch_target_class` orchestrator and the `KINASE_CONFIG` constant. Task 7's GPCR script will call `fetch_target_class(aminergic_config)`.
 
 - [ ] **Step 6: Write mocked test for `chembl_fetcher.py`**
 
 Create `tests/unit/test_chembl_fetcher.py` with tests that mock the ChEMBL client and verify:
-- `fetch_target_class` with an explicit-ID config queries activities for exactly those IDs
-- `fetch_target_class` with a GO-term config runs the discovery path
-- The `fetch_kinase_targets` backward-compat wrapper delegates to `fetch_target_class(KINASE_CONFIG)`
+- `fetch_target_class` with an explicit-ID config queries activities for exactly those IDs (no GO discovery)
+- `fetch_target_class` with a GO-term config runs the GO discovery path
+- `fetch_kinase_targets` and `fetch_bioactivities` still work unchanged (regression guard — they keep their original signatures)
 
 Use `unittest.mock.patch` on `chembl_webresource_client.new_client`.
 
@@ -299,9 +299,12 @@ Expected: FAIL — `cannot import name 'curate_activities'`
 - [ ] **Step 3: Extract `curate_activities` from `main()`**
 
 In `curate.py`:
-- Add `def curate_activities(config: TargetClassConfig, dataset_config: dict, raw_dir: Path | None = None) -> pd.DataFrame:` containing the body of `main()` Steps 1-6 (load raw → standardize → pActivity → duplicates → quality filters → classification labels). Returns the curated DataFrame.
-  - Raw paths derive from `config.raw_activities_filename` / `config.raw_targets_filename`.
-  - The targets merge selects `["target_chembl_id", "pref_name", "gene_symbol"]` plus — **only if the column exists** — the class subfamily column, renamed to a generic `subfamily`. For kinases the source column is `kinase_group`; handle this by checking `if "kinase_group" in targets_df.columns: rename to subfamily`. (GPCR raw targets won't have `kinase_group`; the `subfamily` column for GPCRs comes from `config.subfamily_map` applied by mapping `target_chembl_id`.)
+- Add `def curate_activities(config: TargetClassConfig, dataset_config: dict, raw_dir: Path = Path("data/raw")) -> pd.DataFrame:` containing the body of `main()` Steps 1-6 (load raw → standardize → pActivity → duplicates → quality filters → classification labels). Returns the curated DataFrame. `raw_dir` defaults to `Path("data/raw")` (the conventional location); callers may override.
+  - Raw paths derive from `raw_dir / config.raw_activities_filename` and `raw_dir / config.raw_targets_filename`.
+  - **The `subfamily` column is always populated inside `curate_activities`, by one of two paths:**
+    1. **GO-based classes** (kinase): the targets-file merge selects `["target_chembl_id", "pref_name", "gene_symbol"]`; if `"kinase_group"` exists in `targets_df.columns`, rename it to `subfamily`.
+    2. **Explicit-target-list classes** (GPCR aminergic, `config.uses_explicit_target_list` is True): populate `subfamily` by mapping each row's `target_chembl_id` through `config.subfamily_map`.
+  This way **both classes get a `subfamily` column from this one function** — no caller has to attach it afterward.
 - Rewire `main()` to: parse args → load `dataset_config` YAML → call `curate_activities(KINASE_CONFIG, dataset_config)` → run the split step → save outputs. `main()` keeps the CLI and the kinase defaults.
 - Keep all step-function logic (median aggregation, noise flag, pActivity range, active label) byte-identical — class-agnostic already.
 
@@ -583,9 +586,8 @@ Mirror the kinase `dataset_v1.yaml` curation parameters: pActivity range [3.0, 1
 The script:
 1. Loads `configs/dataset_aminergic_v1.yaml` as `dataset_config`.
 2. Builds the aminergic `TargetClassConfig` (via `build_aminergic_config` — needs the resolved gene→ChEMBL mapping from Task 7's fetch step; persist that mapping in Task 7 so this script can reload it).
-3. Calls `target_affinity_ml.data.curate.curate_activities(config=aminergic_config, dataset_config=dataset_config, raw_dir=Path("data/raw"))` — the function extracted in Task 2.
-4. Because GPCR raw targets have no `kinase_group` column, the `subfamily` column is attached here by mapping `target_chembl_id → config.subfamily_map`. Apply this after `curate_activities` returns (or pass it through — confirm against Task 2's final implementation which handles "subfamily from config.subfamily_map" for the explicit-target-list case).
-5. Writes `data/processed/v1/curated_activities.parquet` + `curation_stats.json`.
+3. Calls `target_affinity_ml.data.curate.curate_activities(config=aminergic_config, dataset_config=dataset_config, raw_dir=Path("data/raw"))` — the function extracted in Task 2. Because `aminergic_config.uses_explicit_target_list` is True, `curate_activities` itself populates the `subfamily` column from `config.subfamily_map` (per Task 2 Step 3) — the GPCR script does NOT need to attach it separately.
+4. Writes `data/processed/v1/curated_activities.parquet` + `curation_stats.json`.
 
 - [ ] **Step 3: Run curation**
 
