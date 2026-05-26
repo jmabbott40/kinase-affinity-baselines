@@ -483,8 +483,10 @@ dependencies:
   - python=3.11
   - pip
   - pip:
-    - -e .
+    - -e .[dev]
 ```
+
+> `-e .[dev]` installs the `[dev]` optional dependencies (pytest, ruff, ipykernel) declared in pyproject.toml. Without `[dev]`, `pytest tests/` would fail at the very next step.
 
 - [ ] **Step 3: Write src/imm1_glue/__init__.py**
 
