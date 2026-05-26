@@ -49,11 +49,11 @@ Internal SPR campaign on a single target (referred to as IMM1 throughout). File 
 
 ### Curation rules (applied in `data/curate.py`)
 
-1. **Replicate aggregation:** for each unique `Compound Name`, take the mean pKD across replicate rows.
-2. **Noisy flag:** mark a compound `is_noisy=True` if the per-compound pKD std > 1.0. Inclusion-wise, noisy compounds remain in the dataset; the flag is for downstream error analysis only.
-3. **Censoring flag:** mark `is_censored=True` if `pkd_mean ≤ 4.0 + 1e-6`.
+1. **Replicate aggregation:** for each unique `Compound Name`, take the mean pKD across replicate rows. Mixed groups (some replicates above the floor, some at 4.0) are averaged as-is — no per-replicate filtering, no special-casing. The mean is the single source of truth for both regression target and censored status.
+2. **Noisy flag:** mark a compound `is_noisy=True` if the per-compound pKD std > 1.0. Noisy compounds remain in the dataset; the flag is for downstream error analysis only. By construction, every mixed binder+censored group has std > 1.0 and is therefore captured by this flag.
+3. **Censoring flag:** mark `is_censored=True` if `pkd_mean ≤ 4.0 + 1e-6`. This is derived from the mean only — a mixed group with (7.5, 4.0) averages to 5.75 and is classified as a (noisy) binder, not as censored. The drop-censored sensitivity analysis (Section 3) therefore retains such mixed groups; only pure-floor compounds are dropped.
 4. **SMILES canonicalization:** via RDKit `MolToSmiles(MolFromSmiles(...))`. Compounds whose SMILES cannot be parsed are dropped, with their compound IDs logged to the curation report.
-5. **Single row per compound** after curation.
+5. **Single row per compound** after curation. The expected final count is approximately 277 compounds (288 raw rows − 9 duplicate-name groups collapsing to one row each − any compounds dropped for invalid SMILES). The exact count is established by the pilot curation run and recorded in `results/curation_report.md`; downstream split-size math is computed from the actual count, not from this estimate.
 
 A sanitized curation report (`results/curation_report.md` — counts only, no IDs/SMILES/pKDs) is committed to the repo and gates downstream work.
 
@@ -68,7 +68,7 @@ A sanitized curation report (`results/curation_report.md` — counts only, no ID
 ### Censoring handling
 
 - **Primary:** treat pKD = 4.0 as an exact value. All 277 curated compounds go into training and evaluation.
-- **Sensitivity (parallel re-run):** repeat the full benchmark with the ~57 censored compounds removed before splitting. The sensitivity result is a **secondary deliverable, not a primary metric**.
+- **Sensitivity (parallel re-run):** repeat the full benchmark with all compounds carrying `is_censored=True` removed before splitting. The exact count of dropped compounds is established by the curation report (it will be smaller than the 57 raw rows at pKD=4.0, because replicate aggregation collapses pure-floor groups to one row and excludes mixed-floor groups from the censored cohort). The sensitivity result is a **secondary deliverable, not a primary metric**.
 - This avoids the engineering cost of censoring-aware losses (Tobit/AFT), which would require per-model machinery and break apples-to-apples comparison across RF/XGB/MLP.
 
 ### Models
@@ -93,9 +93,9 @@ Grids are sized to keep total nested-CV fits under ~30k.
 ### Splits (four strategies, all evaluated)
 
 1. **Random** — 5-fold CV stratified on pKD quartiles. Five seeds: {42, 123, 456, 789, 1000}.
-2. **Murcko scaffold** — 113 unique scaffolds across 277 compounds; 67 singletons. Scaffold groups stay together; singletons randomly distributed per seed.
-3. **Butina cluster** — Tanimoto on ECFP4 (radius=2, 2048-bit). Cutoff selected empirically from a pre-benchmark diagnostic sweep at {0.4, 0.5, 0.6, 0.7, 0.8} that requires ≥10 clusters of ≥5 compounds. If no cutoff qualifies, cluster split is dropped and the project documents the omission.
-4. **Time / synthesis-order** — sort by `Compound Name` lex-order (RAP-XXXX format is zero-padded so lex order = numeric order = synthesis order, confirmed by the analyst). Hold out the most recent 20% as test per fold. Sanity-checked by a diagnostic that confirms monotonic ID progression.
+2. **Murcko scaffold** — 113 unique scaffolds across ~277 compounds; ~67 singletons. Scaffold groups stay together. Singletons are shuffled deterministically by the chosen seed and round-robin-assigned to outer folds, so the seed fully determines singleton placement and across-seed variance is captured.
+3. **Butina cluster** — Tanimoto on ECFP4 (radius=2, 2048-bit). Cutoff selected empirically from a pre-benchmark diagnostic sweep at {0.4, 0.5, 0.6, 0.7, 0.8} that requires ≥10 clusters of ≥5 compounds. If multiple cutoffs qualify, the **smallest qualifying cutoff** is chosen — this produces the fewest, largest clusters and therefore the most aggressive generalization test, consistent with the project's question of how baselines hold up under harder splits. If no cutoff qualifies, the cluster split is dropped and the project documents the omission.
+4. **Time / synthesis-order** — sort by `Compound Name` lex-order (RAP-XXXX format is zero-padded so lex order = numeric order = synthesis order, confirmed by the analyst). Folds are constructed as **5 sequential blocks** of compounds in chronological order (block 0 = oldest 20%, block 4 = newest 20%). Outer fold *k* uses block *k* as test and all other blocks as train (standard k-fold over the chronological ordering, *not* an expanding-window or rolling-window scheme). This ordering is deterministic across seeds — seeds only randomize inner-CV shuffling for hyperparameter selection. Sanity-checked by a diagnostic that confirms monotonic ID progression before fold assignment runs.
 
 All four strategies produce identical fold assignments across models (`results/splits/{strategy}.npy`) so within-fold model comparisons are paired.
 
@@ -103,8 +103,12 @@ All four strategies produce identical fold assignments across models (`results/s
 
 - **Outer 5-fold CV** for evaluation. Each fold uses the strategy-specific assignment above.
 - **Inner 5-fold CV** on each outer-train for hyperparameter selection.
-- **Five seeds** rerun the entire procedure for variance estimation.
+- **Five seeds** rerun the entire procedure for variance estimation. Seeds control inner-CV shuffling and random/scaffold/cluster outer-fold randomization. Under the time split, outer-fold boundaries are deterministic (see split definition above); seeds only control inner-CV shuffling.
+- **Inner-CV selection metric:** mean RMSE on pKD across the 5 inner folds (lower is better). RMSE is the primary regression metric and is what the final tables report; selecting hyperparameters on the same metric avoids the meta-optimization mismatch that occurs when (e.g.) hyperparameters are selected on Spearman ρ but reported on RMSE. Spearman ρ is computed alongside as a sanity-check log line but does not drive selection.
+- **Inner-CV stratification policy:** the inner k-fold uses plain k-fold over the outer-train (no quartile stratification, no further group stratification). The rationale is two-fold: (a) under scaffold/cluster/time splits, inner stratification on pKD quartiles would re-mix the group structure that the outer split deliberately enforces, partially undoing it; (b) at the per-outer-fold scale (~180 train compounds), additional stratification offers little variance reduction and risks degenerate inner folds. Random outer split uses plain inner k-fold as well for protocol consistency across strategies.
+- **Inner-CV hyperparameter tiebreaking:** if multiple hyperparameter configurations produce identical mean inner-RMSE within 1e-9, pick the alphabetically-first by parameter string (deterministic; matches the error-handling table).
 - Final reported metric per (model, split) cell = mean ± bootstrap 95% CI across all seeds × outer folds.
+- **Multi-threshold classification metric derivation:** classification metrics (AUROC, AUPRC, MCC, F1, balanced accuracy) are computed by thresholding the *regression model's* point predictions at each pKD cut. No separate binary classifiers are trained. AUROC and AUPRC use the raw regression prediction as the score (no thresholding needed); MCC/F1/balanced accuracy threshold the predicted pKD at the same cut as the label.
 
 ### Metrics
 
@@ -185,9 +189,10 @@ imm1-glue-baselines/
     │
     ▼  data/load.py            (schema-validated DataFrame)
     │
-    ▼  data/curate.py          (277 unique compounds; replicate-aggregated; flagged)
+    ▼  data/curate.py          (~277 unique compounds [estimate; confirmed by curation report];
+    │                           replicate-aggregated; flagged)
     │
-    ▼  target_affinity_ml.features.fingerprints   (X: 277 × 4096)
+    ▼  target_affinity_ml.features.fingerprints   (X: N_curated × 4096)
     │
     ▼  data/splits.py          (4 strategies × 5 seeds → fold assignments)
     │
@@ -243,10 +248,20 @@ Never silently swallowed: NaN/Inf in fingerprints, predictions outside `[0, 14]`
 | Unit — splits | Non-overlap of train/test compound IDs; fold size tolerance; scaffold/cluster group integrity | Synthetic 20-compound fixture |
 | Unit — metrics | IMM1-specific multi-threshold classification assertions only | Crafted predictions/labels |
 | Integration smoke | End-to-end run on 30-compound synthetic dataset, one model × one split × one seed × one fold | `tests/test_pipeline_smoke.py`, <30s |
-| Library audit | `target_affinity_ml` exposes expected API surfaces | `scripts/audit_library.py`; produces checklist report; gates further work |
+| Library audit | `target_affinity_ml` exposes expected API surfaces | `scripts/audit_library.py`; produces checklist report; gates further work per the blocking policy below |
 | Pre-commit hook | Refuses commits containing compound IDs or pKD-format floats | Bash hook; tested against a planted-leak fixture |
 
 Not tested: model numerical correctness on real IMM1 data (that's what the benchmark measures); library internals (owned upstream); bitwise reproducibility across hardware.
+
+### Library audit blocking policy
+
+The audit script (`scripts/audit_library.py`) produces a checklist report classifying each missing/incomplete `target_affinity_ml` API into one of:
+
+- **Critical-path gap** — required to run any nested-CV sweep. Examples: `RandomForestModel.fit/predict`, `XGBoostModel.fit/predict`, `MLPModel.fit/predict`, nested-CV utility. Critical-path gaps **block** further `imm1-glue-baselines` work until a gap-fill PR is merged into `target-affinity-ml` and the new version is pinned in `pyproject.toml`.
+- **Per-model uncertainty gap** — `predict_with_uncertainty` not implemented for a specific model. **Does not block** the benchmark; that model's σ̂ column is recorded as NaN and the final report lists which (model, split) cells lack uncertainty. Uncertainty-only deliverables (calibration plots, σ̂/|residual| correlation) are produced only for models with non-NaN σ̂.
+- **Non-critical helper gap** — auxiliary metric, plot helper, or report formatter not in the library. **Does not block**; implementer adds a local stub in `imm1_glue/` with a TODO to migrate upstream after the benchmark completes.
+
+The audit report is reviewed by the analyst before Phase 1 begins; the analyst's call on any borderline gap is final.
 
 ## 8. Deliverables
 
@@ -301,11 +316,12 @@ Estimated effort: ~7–9 working days; one overnight compute run.
 
 Implementation phase is complete when:
 
-1. `scripts/audit_library.py` reports all required APIs present (or gap-fill PRs merged).
+1. `scripts/audit_library.py` reports all required APIs present, or all critical-path gap-fill PRs are merged into `target-affinity-ml` and the new version is pinned.
 2. `scripts/run_diagnostics.py` produces all three diagnostic reports.
 3. `pytest tests/` passes.
-4. `scripts/run_benchmark.py --config configs/dataset_imm1.yaml` completes a full sweep.
-5. The primary results table is reviewed by the analyst and either accepted or flagged for re-run.
+4. `scripts/run_benchmark.py --config configs/dataset_imm1.yaml` completes a full sweep on the primary cohort.
+5. The drop-censored sensitivity sweep is also run, and `results/tables/sensitivity_metrics.{csv,md}` is produced.
+6. The primary and sensitivity results tables are reviewed by the analyst and either accepted or flagged for re-run.
 
 ---
 
