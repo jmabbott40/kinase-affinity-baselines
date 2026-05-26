@@ -340,26 +340,40 @@ Create `scripts/check_no_data_leak.sh`:
 ```bash
 #!/usr/bin/env bash
 # Refuses commits containing RAP-XXXXXXX compound IDs or pKD-looking floats.
-# Scans staged content only — does not block git operations on already-committed files.
+# Two invocation modes:
+#   - No args: pre-commit mode, scans staged content (git diff --cached).
+#   - With file args or piped input: scan-mode, used for manual testing.
 
 set -euo pipefail
 
 PATTERN_ID='RAP-[0-9]{7}'
 PATTERN_PKD='pkd[[:space:]]*[:=]?[[:space:]]*[0-9]+\.[0-9]{4,}'
 
-# Get staged content (added or modified lines only)
-LEAKED=$(git diff --cached --no-color --unified=0 | \
-         grep -E "^\+" | \
-         grep -v "^\+\+\+" | \
-         grep -Ei "($PATTERN_ID|$PATTERN_PKD)" || true)
+scan_text() {
+    grep -Ei "($PATTERN_ID|$PATTERN_PKD)" || true
+}
+
+if [ "$#" -gt 0 ]; then
+    # Scan-mode: scan given files
+    LEAKED=$(cat "$@" | scan_text)
+elif [ ! -t 0 ]; then
+    # Scan-mode: scan stdin (pipe)
+    LEAKED=$(scan_text)
+else
+    # Pre-commit mode: scan staged content (added lines only)
+    LEAKED=$(git diff --cached --no-color --unified=0 | \
+             grep -E "^\+" | \
+             grep -v "^\+\+\+" | \
+             scan_text)
+fi
 
 if [ -n "$LEAKED" ]; then
-    echo "ERROR: pre-commit hook detected possible confidential data leak."
+    echo "ERROR: data-leak scan detected possible confidential content."
     echo "Offending lines:"
     echo "$LEAKED"
     echo
-    echo "If you believe this is a false positive, document the justification"
-    echo "and re-run with --no-verify (NOT recommended for IMM1 work)."
+    echo "If pre-commit hook: fix the offending lines and try again."
+    echo "If manual scan: investigate and sanitize before committing."
     exit 1
 fi
 ```
@@ -552,8 +566,8 @@ features:
   type: morgan_fingerprint
   radius: 3
   n_bits: 4096
-  use_chirality: true
-  use_features: false           # use radius-only ECFP-style, not FCFP
+  # smiles_to_morgan_fp() in target-affinity-ml v1.1.0 takes only (smiles, radius, n_bits);
+  # any future chirality/feature-flag axes would require a library API extension.
 
 classification_thresholds:
   - 6.0      # KD <= 1 uM
@@ -710,6 +724,8 @@ from typing import Any
 
 
 # (module_path, attr_name, gap_class)
+# Names verified against target-affinity-ml v1.1.0 source at
+# /Users/joshuaabbott/target-affinity-ml/src/target_affinity_ml/
 REQUIRED_APIS = [
     # Features
     ("target_affinity_ml.features.fingerprints", "smiles_to_morgan_fp", "critical"),
@@ -725,11 +741,12 @@ REQUIRED_APIS = [
     # Metrics
     ("target_affinity_ml.evaluation.metrics", "compute_regression_metrics", "critical"),
     ("target_affinity_ml.evaluation.metrics", "compute_classification_metrics", "critical"),
-    # Bootstrap / multi-seed
-    ("target_affinity_ml.evaluation.bootstrap", "bootstrap_ci", "non_critical"),
-    ("target_affinity_ml.evaluation.multi_seed_analysis", "aggregate_seeds", "non_critical"),
-    # Uncertainty calibration
-    ("target_affinity_ml.evaluation.uncertainty", "reliability_diagram", "non_critical"),
+    # Bootstrap / multi-seed (real names in v1.1.0)
+    ("target_affinity_ml.evaluation.bootstrap", "bootstrap_metrics", "non_critical"),
+    ("target_affinity_ml.evaluation.multi_seed_analysis", "aggregate_across_seeds", "non_critical"),
+    # Uncertainty calibration (real names in v1.1.0)
+    ("target_affinity_ml.evaluation.uncertainty", "calibration_curve", "non_critical"),
+    ("target_affinity_ml.evaluation.uncertainty", "miscalibration_area", "non_critical"),
 ]
 
 PER_MODEL_UNCERTAINTY = [
@@ -1430,10 +1447,10 @@ Expected: writes `results/curation_report.md`.
 Run: `cat results/curation_report.md`
 Sanity check: counts only, no `RAP-XXXX`, no individual pKD values.
 
-- [ ] **Step 4: Run the pre-commit hook as a dry test**
+- [ ] **Step 4: Scan the report with the leak detector**
 
-Run: `bash scripts/check_no_data_leak.sh < results/curation_report.md || echo "would block"`
-Expected: nothing blocks (the report is clean).
+Run: `bash scripts/check_no_data_leak.sh results/curation_report.md && echo CLEAN`
+Expected: prints `CLEAN` (the report has no compound IDs or pKD-format floats).
 
 - [ ] **Step 5: Commit the diagnostic script (not the generated report)**
 
@@ -2634,7 +2651,7 @@ for p in list(Path('results/predictions').glob('rf_random_seed42_fold0*.parquet'
 
 ```bash
 # Verify the log is clean before staging anything
-bash scripts/check_no_data_leak.sh < results/logs/benchmark.log || echo "Log contains leak — DO NOT COMMIT"
+bash scripts/check_no_data_leak.sh results/logs/benchmark.log && echo "Log is clean" || echo "Log contains leak — DO NOT COMMIT"
 ```
 If clean, you may optionally commit a sanitized digest later. By default `results/logs/` is gitignored so nothing is committed.
 
@@ -2679,6 +2696,128 @@ Expected: 300.
 
 ---
 
+### Task 5.0 — IMM1 classification metrics helper (library gap-fill)
+
+**Background:** `target_affinity_ml.evaluation.metrics.compute_classification_metrics` returns `{auroc, auprc, precision_at_k_100, precision_at_k_500, ef_1pct, ef_5pct}` only. The spec requires MCC, F1, and balanced accuracy at three pKD thresholds (6.0, 7.0, >4.0). We add these locally rather than gap-fill upstream, since they're standard sklearn calls and the kinase library doesn't need them.
+
+**Files:**
+- Create: `src/imm1_glue/evaluation/classification_metrics.py`
+- Create: `tests/test_classification_metrics.py`
+
+- [ ] **Step 1: Write failing tests**
+
+```python
+"""Tests for imm1_glue.evaluation.classification_metrics."""
+
+from __future__ import annotations
+
+import numpy as np
+import pytest
+
+from imm1_glue.evaluation.classification_metrics import compute_imm1_classification_metrics
+
+
+def test_returns_required_keys() -> None:
+    y_true = np.array([0, 0, 1, 1, 1])
+    y_score = np.array([0.1, 0.4, 0.5, 0.8, 0.9])
+    m = compute_imm1_classification_metrics(y_true, y_score, threshold=0.5)
+    for k in ["auroc", "auprc", "mcc", "f1", "balanced_accuracy"]:
+        assert k in m
+
+
+def test_perfect_classifier_scores_one() -> None:
+    y_true = np.array([0, 0, 0, 1, 1, 1])
+    y_score = np.array([0.1, 0.2, 0.3, 0.7, 0.8, 0.9])
+    m = compute_imm1_classification_metrics(y_true, y_score, threshold=0.5)
+    assert m["mcc"] == pytest.approx(1.0)
+    assert m["f1"] == pytest.approx(1.0)
+    assert m["balanced_accuracy"] == pytest.approx(1.0)
+
+
+def test_degenerate_single_class_returns_nan() -> None:
+    y_true = np.array([1, 1, 1, 1])
+    y_score = np.array([0.6, 0.7, 0.8, 0.9])
+    m = compute_imm1_classification_metrics(y_true, y_score, threshold=0.5)
+    assert np.isnan(m["auroc"])  # undefined when only one class
+```
+
+- [ ] **Step 2: Implement the helper**
+
+```python
+"""IMM1-specific classification metrics: AUROC, AUPRC, MCC, F1, balanced accuracy.
+
+The upstream target_affinity_ml.evaluation.metrics.compute_classification_metrics
+returns AUROC/AUPRC/precision-at-k/enrichment-factor but not MCC/F1/balanced-acc.
+This helper adds those for the spec's multi-threshold classification table.
+"""
+
+from __future__ import annotations
+
+import numpy as np
+from sklearn.metrics import (
+    average_precision_score,
+    balanced_accuracy_score,
+    f1_score,
+    matthews_corrcoef,
+    roc_auc_score,
+)
+
+
+def compute_imm1_classification_metrics(
+    y_true: np.ndarray, y_score: np.ndarray, threshold: float
+) -> dict[str, float]:
+    """AUROC, AUPRC, MCC, F1, balanced accuracy for binarized regression predictions.
+
+    Parameters
+    ----------
+    y_true : np.ndarray
+        Binary labels (0/1) — already thresholded.
+    y_score : np.ndarray
+        Continuous regression predictions (used as score for AUROC/AUPRC).
+    threshold : float
+        Threshold on `y_score` for binary classification metrics (MCC, F1, BA).
+    """
+    y_true = np.asarray(y_true).astype(int)
+    y_score = np.asarray(y_score, dtype=float)
+    y_pred = (y_score >= threshold).astype(int)
+
+    out: dict[str, float] = {}
+    n_pos = int(y_true.sum())
+    n_neg = len(y_true) - n_pos
+
+    if n_pos > 0 and n_neg > 0:
+        out["auroc"] = float(roc_auc_score(y_true, y_score))
+        out["auprc"] = float(average_precision_score(y_true, y_score))
+    else:
+        out["auroc"] = float("nan")
+        out["auprc"] = float("nan")
+
+    if len(np.unique(y_pred)) >= 1 and n_pos > 0 and n_neg > 0:
+        out["mcc"] = float(matthews_corrcoef(y_true, y_pred))
+        out["f1"] = float(f1_score(y_true, y_pred, zero_division=0))
+        out["balanced_accuracy"] = float(balanced_accuracy_score(y_true, y_pred))
+    else:
+        out["mcc"] = float("nan")
+        out["f1"] = float("nan")
+        out["balanced_accuracy"] = float("nan")
+
+    return out
+```
+
+- [ ] **Step 3: Run tests**
+
+Run: `pytest tests/test_classification_metrics.py -v`
+Expected: all pass.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add src/imm1_glue/evaluation/classification_metrics.py tests/test_classification_metrics.py
+git commit -m "Add IMM1 classification metrics helper (MCC, F1, balanced acc)"
+```
+
+---
+
 ### Task 5.1 — Generate tables
 
 **Files:**
@@ -2698,10 +2837,9 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from target_affinity_ml.evaluation.metrics import (
-    compute_regression_metrics,
-    compute_classification_metrics,
-)
+from target_affinity_ml.evaluation.metrics import compute_regression_metrics
+
+from imm1_glue.evaluation.classification_metrics import compute_imm1_classification_metrics
 
 logger = logging.getLogger(__name__)
 
@@ -2743,10 +2881,9 @@ def classification_table(preds: pd.DataFrame, thresholds: list[float]) -> pd.Dat
             for (seed, fold), gf in g.groupby(["seed", "outer_fold"]):
                 y_true_bin = (gf["y_true"].values >= thr).astype(int)
                 y_score = gf["y_pred"].values
-                y_pred_bin = (y_score >= thr).astype(int)
                 if y_true_bin.sum() == 0 or y_true_bin.sum() == len(y_true_bin):
-                    continue  # degenerate fold
-                metrics = compute_classification_metrics(y_true_bin, y_score, y_pred_bin)
+                    continue  # degenerate fold (single class)
+                metrics = compute_imm1_classification_metrics(y_true_bin, y_score, threshold=thr)
                 fold_metrics.append(metrics)
             if not fold_metrics:
                 continue
@@ -2885,9 +3022,56 @@ def sigma_vs_residual(preds: pd.DataFrame, model: str, split: str, ax: plt.Axes)
     ax.set_title(f"{model} / {split}  ρ={rho:.2f}")
 
 
+def reliability_diagram(
+    preds: pd.DataFrame, model: str, split: str, threshold: float, ax: plt.Axes, n_bins: int = 10
+) -> None:
+    """Reliability diagram on binarized predictions at the given pKD threshold.
+
+    For each predicted-score bin, plot the observed positive fraction against the
+    mean predicted score. A perfectly calibrated classifier sits on the diagonal.
+    Also annotates ECE (expected calibration error).
+    """
+    g = preds[(preds["model"] == model) & (preds["split"] == split)]
+    y_true = (g["y_true"].values >= threshold).astype(int)
+    y_score = g["y_pred"].values
+
+    # Normalize y_score into a [0,1] proxy for "probability" via min-max scaling on the
+    # pooled prediction distribution. (We don't have calibrated probabilities; this is
+    # a diagnostic, not a deployment calibration step.)
+    lo, hi = float(y_score.min()), float(y_score.max())
+    if hi - lo < 1e-9:
+        ax.text(0.5, 0.5, "Degenerate (constant prediction)", ha="center")
+        ax.set_title(f"{model} / {split} @ {threshold} (degenerate)")
+        return
+    p = (y_score - lo) / (hi - lo)
+
+    bin_edges = np.linspace(0, 1, n_bins + 1)
+    bin_ids = np.clip(np.digitize(p, bin_edges) - 1, 0, n_bins - 1)
+    obs, exp, weights = [], [], []
+    for b in range(n_bins):
+        mask = bin_ids == b
+        if mask.sum() == 0:
+            continue
+        obs.append(y_true[mask].mean())
+        exp.append(p[mask].mean())
+        weights.append(mask.sum())
+    obs, exp, weights = np.array(obs), np.array(exp), np.array(weights)
+    ece = float(np.sum(weights * np.abs(obs - exp)) / np.sum(weights)) if len(weights) else float("nan")
+
+    ax.plot([0, 1], [0, 1], "k--", linewidth=0.8, label="perfect")
+    ax.scatter(exp, obs, s=np.maximum(20, weights), alpha=0.7)
+    ax.set_xlabel("Mean predicted (scaled)")
+    ax.set_ylabel("Observed positive fraction")
+    ax.set_title(f"{model} / {split} @ pKD≥{threshold:g}  ECE={ece:.3f}")
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+
+
 def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--results-dir", default="results", type=Path)
+    p.add_argument("--reliability-threshold", default=6.0, type=float,
+                   help="pKD threshold for reliability diagrams (default: 6.0)")
     args = p.parse_args()
     logging.basicConfig(level=logging.INFO)
 
@@ -2903,9 +3087,10 @@ def main() -> None:
 
     for model in models:
         for split in splits:
-            fig, axes = plt.subplots(1, 2, figsize=(10, 4))
+            fig, axes = plt.subplots(1, 3, figsize=(14, 4))
             predicted_vs_actual(preds, model, split, axes[0])
             sigma_vs_residual(preds, model, split, axes[1])
+            reliability_diagram(preds, model, split, args.reliability_threshold, axes[2])
             fig.suptitle(f"{model} on {split} split (pooled across seeds × folds)")
             fig.tight_layout()
             out = fig_dir / f"calibration_{model}_{split}.png"
@@ -3104,8 +3289,9 @@ python scripts/run_diagnostics.py
 # Run all tests
 pytest tests/ -v
 
-# Check the pre-commit hook on a planted leak (sanity)
-echo "+RAP-0010972 pkd=8.6695" | bash scripts/check_no_data_leak.sh && echo OK || echo BLOCKED
+# Check the leak detector on a planted leak (manual scan mode)
+echo "RAP-0010972 pkd=8.6695" | bash scripts/check_no_data_leak.sh && echo OK || echo BLOCKED
+# Expected: prints offending line and exits BLOCKED.
 ```
 
 ---
