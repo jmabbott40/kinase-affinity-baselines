@@ -70,9 +70,9 @@ echo "--- Repos & frozen tags (locally + on origin) ---"
 check "library repo exists"                  "test -d /Users/joshuaabbott/target-affinity-ml/.git"
 check "GPCR repo exists"                     "test -d /Users/joshuaabbott/gpcr-aminergic-benchmarks/.git"
 check "kinase repo exists"                   "test -d /Users/joshuaabbott/mlproject/.git"
-check "library v1.2.0 tag (local)"           "test -n \"\$(cd /Users/joshuaabbott/target-affinity-ml && git tag -l v1.2.0)\""
+check "library v1.2.0 tag (local)"           "test -n \"$(cd /Users/joshuaabbott/target-affinity-ml && git tag -l v1.2.0)\""
 check "library v1.2.0 tag (origin)"          "git ls-remote --tags https://github.com/jmabbott40/target-affinity-ml.git v1.2.0 | grep -q refs/tags/v1.2.0"
-check "GPCR v1.1.0 tag (local)"              "test -n \"\$(cd /Users/joshuaabbott/gpcr-aminergic-benchmarks && git tag -l v1.1.0)\""
+check "GPCR v1.1.0 tag (local)"              "test -n \"$(cd /Users/joshuaabbott/gpcr-aminergic-benchmarks && git tag -l v1.1.0)\""
 check "GPCR v1.1.0 tag (origin)"             "git ls-remote --tags https://github.com/jmabbott40/gpcr-aminergic-benchmarks.git v1.1.0 | grep -q refs/tags/v1.1.0"
 check "GPCR pyproject pins library to v1.2.0" "grep -q 'target-affinity-ml.*@v1.2.0' /Users/joshuaabbott/gpcr-aminergic-benchmarks/pyproject.toml"
 check "library plan3-development branch deleted from origin" "! git ls-remote --heads https://github.com/jmabbott40/target-affinity-ml.git plan3-development | grep -q refs/heads/plan3-development"
@@ -116,27 +116,27 @@ done
 echo
 echo "--- Per-target analysis inputs (drives manuscript supplementary, do not modify) ---"
 check "per_target_plddt.csv (T14 output)"    "test -f /Users/joshuaabbott/gpcr-aminergic-benchmarks/data/processed/v1/per_target_plddt.csv"
-check "GPCR per-target benchmark CSVs (21)" "test \$(ls /Users/joshuaabbott/gpcr-aminergic-benchmarks/data/processed/v1/per_target/per_target_*.csv 2>/dev/null | wc -l) -eq 21"
-check "kinase per-target CSVs (21)"          "test \$(ls /Users/joshuaabbott/gpcr-aminergic-benchmarks/data/kinase_reference/benchmark_v1/per_target/per_target_*.csv 2>/dev/null | wc -l) -ge 18"
+check "GPCR per-target benchmark CSVs (21)" 'test $(ls /Users/joshuaabbott/gpcr-aminergic-benchmarks/data/processed/v1/per_target/per_target_*.csv 2>/dev/null | wc -l) -eq 21'
+check "kinase per-target CSVs (21)"          'test $(ls /Users/joshuaabbott/gpcr-aminergic-benchmarks/data/kinase_reference/benchmark_v1/per_target/per_target_*.csv 2>/dev/null | wc -l) -ge 18'
 
 echo
 echo "--- Python environment + library v1.2.0 ---"
 CONDA_PY=/opt/homebrew/Caskroom/miniforge/base/envs/kinase-affinity/bin/python
-check "kinase-affinity conda env exists"     "test -x \$CONDA_PY"
-check "Python is 3.11"                       "\$CONDA_PY --version 2>&1 | grep -q 'Python 3.11'"
-check "library importable (v1.2.0)"          "test \"\$(\$CONDA_PY -c 'import target_affinity_ml; print(target_affinity_ml.__version__)' 2>/dev/null)\" = '1.2.0'"
-check "benchmarks submodule importable"      "\$CONDA_PY -c 'from target_affinity_ml.benchmarks import compute_scaffold_metrics, h1_rf_vs_deep, compute_binding_site_plddt'"
+check "kinase-affinity conda env exists"     "test -x $CONDA_PY"
+check "Python is 3.11"                       "$CONDA_PY --version 2>&1 | grep -q 'Python 3.11'"
+check "library importable (v1.2.0)"          "test \"\$($CONDA_PY -c 'import target_affinity_ml; print(target_affinity_ml.__version__)' 2>/dev/null)\" = '1.2.0'"
+check "benchmarks submodule importable"      "$CONDA_PY -c 'from target_affinity_ml.benchmarks import compute_scaffold_metrics, h1_rf_vs_deep, compute_binding_site_plddt'"
 
 echo
 echo "--- Manuscript drafting prereqs ---"
-check "python-docx available (for anthropic-skills:docx)" "\$CONDA_PY -c 'import docx' 2>/dev/null || pip show python-docx >/dev/null 2>&1"
+check "python-docx available (for anthropic-skills:docx)" "$CONDA_PY -c 'import docx' 2>/dev/null || pip show python-docx >/dev/null 2>&1"
 check "pandoc available (optional, for md→docx if used)" "command -v pandoc"
 
 echo
 echo "=========================================="
-echo "  Pre-flight: \$PASS passed, \$FAIL failed"
+echo "  Pre-flight: $PASS passed, $FAIL failed"
 echo "=========================================="
-if [ \$FAIL -gt 0 ]; then
+if [ "$FAIL" -gt 0 ]; then
     echo "  Investigate failures before drafting."
     echo "  - Missing tags  → check git ls-remote on the relevant repo and re-tag if needed"
     echo "  - Missing tables/figures → these are frozen at v1.1.0; should not be missing"
